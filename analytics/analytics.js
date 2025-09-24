@@ -1,0 +1,425 @@
+// Analytics Dashboard JavaScript
+
+// DOM Elements
+const elements = {
+  totalTime: document.getElementById('totalTime'),
+  focusScore: document.getElementById('focusScore'),
+  sitesCount: document.getElementById('sitesCount'),
+  topicsCount: document.getElementById('topicsCount'),
+  topSites: document.getElementById('topSites'),
+  recentSessions: document.getElementById('recentSessions'),
+  insights: document.getElementById('insights'),
+  exportBtn: document.getElementById('exportBtn'),
+  clearBtn: document.getElementById('clearBtn')
+};
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadAnalytics();
+  setupEventListeners();
+  drawCharts();
+});
+
+// Load analytics data
+async function loadAnalytics() {
+  try {
+    // Get today's data
+    const response = await chrome.runtime.sendMessage({ action: 'getTodayData' });
+    if (response && response.success) {
+      const data = response.data;
+      updateSummaryCards(data);
+      updateTopSites(data);
+      updateRecentSessions(data);
+      updateInsights(data);
+    }
+    
+    // Get week data for charts
+    const weekResponse = await chrome.runtime.sendMessage({ action: 'getWeekData' });
+    if (weekResponse && weekResponse.success) {
+      drawWeeklyChart(weekResponse.data);
+    }
+  } catch (error) {
+    console.error('Error loading analytics:', error);
+    showEmptyState();
+  }
+}
+
+// Update summary cards
+function updateSummaryCards(data) {
+  // Total time
+  const hours = Math.floor(data.totalTime / 3600000);
+  const minutes = Math.floor((data.totalTime % 3600000) / 60000);
+  elements.totalTime.textContent = `${hours}h ${minutes}m`;
+  
+  // Focus score
+  const score = calculateFocusScore(data);
+  elements.focusScore.textContent = score > 0 ? score : '--';
+  
+  // Sites count
+  elements.sitesCount.textContent = data.uniqueSites ? data.uniqueSites.size : '0';
+  
+  // Topics count
+  elements.topicsCount.textContent = data.topics ? data.topics.size : '0';
+}
+
+// Calculate focus score
+function calculateFocusScore(data) {
+  if (!data.totalTime || data.totalTime === 0) return 0;
+  
+  const deepFocusWeight = 1.0;
+  const activeReadingWeight = 0.7;
+  const scanningWeight = 0.3;
+  
+  const weightedTime = 
+    ((data.deepFocusTime || 0) * deepFocusWeight) +
+    ((data.activeReadingTime || 0) * activeReadingWeight) +
+    ((data.scanningTime || 0) * scanningWeight);
+  
+  return Math.round((weightedTime / data.totalTime) * 100);
+}
+
+// Update top sites list
+function updateTopSites(data) {
+  if (!data.sessions || data.sessions.length === 0) {
+    elements.topSites.innerHTML = '<div class="empty-state">No sites visited today.</div>';
+    return;
+  }
+  
+  // Aggregate time by domain
+  const siteTime = {};
+  data.sessions.forEach(session => {
+    if (!siteTime[session.domain]) {
+      siteTime[session.domain] = {
+        domain: session.domain,
+        time: 0,
+        category: session.category
+      };
+    }
+    siteTime[session.domain].time += session.duration;
+  });
+  
+  // Sort by time and get top 10
+  const topSites = Object.values(siteTime)
+    .sort((a, b) => b.time - a.time)
+    .slice(0, 10);
+  
+  // Render list
+  elements.topSites.innerHTML = topSites.map(site => `
+    <div class="list-item">
+      <span class="list-item-title">${site.domain}</span>
+      <span class="list-item-category category-${site.category.toLowerCase()}">${site.category}</span>
+      <span class="list-item-value">${formatTime(site.time)}</span>
+    </div>
+  `).join('');
+}
+
+// Update recent sessions
+function updateRecentSessions(data) {
+  if (!data.sessions || data.sessions.length === 0) {
+    elements.recentSessions.innerHTML = '<div class="empty-state">No sessions recorded today.</div>';
+    return;
+  }
+  
+  // Get last 20 sessions
+  const recentSessions = data.sessions.slice(-20).reverse();
+  
+  // Render list
+  elements.recentSessions.innerHTML = recentSessions.map(session => `
+    <div class="list-item">
+      <span class="list-item-title">${truncateText(session.title, 50)}</span>
+      <span class="list-item-category category-${session.category.toLowerCase()}">${session.category}</span>
+      <span class="list-item-value">${formatTime(session.duration)}</span>
+    </div>
+  `).join('');
+}
+
+// Update insights
+function updateInsights(data) {
+  const insights = generateInsights(data);
+  
+  if (insights.length === 0) {
+    elements.insights.innerHTML = '<div class="empty-state">Insights will appear as you browse.</div>';
+    return;
+  }
+  
+  elements.insights.innerHTML = insights.map(insight => `
+    <div class="insight-item insight-${insight.type}">
+      <div class="insight-text">${insight.message}</div>
+    </div>
+  `).join('');
+}
+
+// Generate insights
+function generateInsights(data) {
+  const insights = [];
+  
+  if (!data || data.totalTime === 0) {
+    return insights;
+  }
+  
+  // Deep focus insight
+  const deepFocusPercent = (data.deepFocusTime / data.totalTime) * 100;
+  if (deepFocusPercent > 60) {
+    insights.push({
+      type: 'positive',
+      message: `Excellent focus! ${Math.round(deepFocusPercent)}% of your time was in deep concentration.`
+    });
+  } else if (deepFocusPercent < 20) {
+    insights.push({
+      type: 'suggestion',
+      message: 'Try longer uninterrupted sessions for deeper focus and better retention.'
+    });
+  }
+  
+  // Category insight
+  if (data.categories) {
+    const topCategory = Object.entries(data.categories)
+      .sort((a, b) => b[1] - a[1])[0];
+    if (topCategory) {
+      const percent = (topCategory[1] / data.totalTime) * 100;
+      insights.push({
+        type: 'info',
+        message: `You spent ${Math.round(percent)}% of your time on ${topCategory[0]} today.`
+      });
+    }
+  }
+  
+  // Time insight
+  const hours = data.totalTime / 3600000;
+  if (hours > 6) {
+    insights.push({
+      type: 'warning',
+      message: `You've been online for ${Math.round(hours)} hours today. Remember to take breaks!`
+    });
+  }
+  
+  // Site diversity
+  if (data.uniqueSites) {
+    const siteCount = data.uniqueSites.size;
+    if (siteCount > 30) {
+      insights.push({
+        type: 'info',
+        message: `High exploration: visited ${siteCount} different sites today.`
+      });
+    } else if (siteCount < 5 && siteCount > 0) {
+      insights.push({
+        type: 'positive',
+        message: `Focused browsing: stayed on just ${siteCount} sites today.`
+      });
+    }
+  }
+  
+  return insights;
+}
+
+// Draw charts
+function drawCharts() {
+  // Simple bar chart implementation without external library
+  drawCategoryChart();
+}
+
+// Draw weekly chart
+function drawWeeklyChart(weekData) {
+  const canvas = document.getElementById('weeklyCanvas');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width = canvas.offsetWidth;
+  const height = canvas.height = canvas.offsetHeight;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, width, height);
+  
+  if (!weekData || weekData.length === 0) {
+    ctx.fillStyle = '#999';
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No data for the past week', width / 2, height / 2);
+    return;
+  }
+  
+  // Prepare data
+  const days = weekData.map(d => {
+    const date = new Date(d.date);
+    return date.toLocaleDateString('en', { weekday: 'short' });
+  }).reverse();
+  
+  const values = weekData.map(d => d.totalTime / 3600000).reverse(); // Convert to hours
+  const maxValue = Math.max(...values, 1);
+  
+  // Draw bars
+  const barWidth = width / (days.length * 2);
+  const barSpacing = barWidth;
+  const chartHeight = height - 40;
+  
+  ctx.fillStyle = '#0066FF';
+  values.forEach((value, index) => {
+    const barHeight = (value / maxValue) * chartHeight;
+    const x = index * (barWidth + barSpacing) + barSpacing;
+    const y = height - barHeight - 30;
+    
+    ctx.fillRect(x, y, barWidth, barHeight);
+    
+    // Draw value label
+    ctx.fillStyle = '#666';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${value.toFixed(1)}h`, x + barWidth / 2, y - 5);
+    
+    // Draw day label
+    ctx.fillText(days[index], x + barWidth / 2, height - 10);
+    
+    ctx.fillStyle = '#0066FF';
+  });
+}
+
+// Draw category chart
+async function drawCategoryChart() {
+  const canvas = document.getElementById('categoryCanvas');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width = canvas.offsetWidth;
+  const height = canvas.height = canvas.offsetHeight;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, width, height);
+  
+  // Get today's data
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'getTodayData' });
+    if (!response || !response.success || !response.data.categories) {
+      ctx.fillStyle = '#999';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No category data available', width / 2, height / 2);
+      return;
+    }
+    
+    const categories = Object.entries(response.data.categories)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    if (categories.length === 0) {
+      ctx.fillStyle = '#999';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No category data available', width / 2, height / 2);
+      return;
+    }
+    
+    // Draw pie chart
+    const total = categories.reduce((sum, [_, value]) => sum + value, 0);
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 3;
+    
+    const colors = {
+      'Learning': '#4CAF50',
+      'Development': '#2196F3',
+      'Research': '#9C27B0',
+      'Documentation': '#00BCD4',
+      'News': '#FF5722',
+      'Social': '#E91E63',
+      'Reading': '#673AB7',
+      'Reference': '#607D8B',
+      'Exploring': '#FF9800'
+    };
+    
+    let currentAngle = -Math.PI / 2;
+    
+    categories.forEach(([category, value]) => {
+      const sliceAngle = (value / total) * 2 * Math.PI;
+      
+      // Draw slice
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + sliceAngle);
+      ctx.closePath();
+      ctx.fillStyle = colors[category] || '#999';
+      ctx.fill();
+      
+      // Draw label
+      const labelAngle = currentAngle + sliceAngle / 2;
+      const labelX = centerX + Math.cos(labelAngle) * (radius + 20);
+      const labelY = centerY + Math.sin(labelAngle) * (radius + 20);
+      
+      ctx.fillStyle = '#666';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(category, labelX, labelY);
+      
+      currentAngle += sliceAngle;
+    });
+  } catch (error) {
+    console.error('Error drawing category chart:', error);
+  }
+}
+
+// Setup event listeners
+function setupEventListeners() {
+  elements.exportBtn.addEventListener('click', exportData);
+  elements.clearBtn.addEventListener('click', clearData);
+}
+
+// Export data
+async function exportData() {
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'exportData' });
+    if (response && response.success) {
+      const dataStr = JSON.stringify(response.data, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attention-analytics-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      
+      URL.revokeObjectURL(url);
+    }
+  } catch (error) {
+    console.error('Error exporting data:', error);
+    alert('Failed to export data');
+  }
+}
+
+// Clear data
+async function clearData() {
+  if (!confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    await chrome.storage.local.clear();
+    alert('All data has been cleared');
+    location.reload();
+  } catch (error) {
+    console.error('Error clearing data:', error);
+    alert('Failed to clear data');
+  }
+}
+
+// Show empty state
+function showEmptyState() {
+  elements.totalTime.textContent = '0h 0m';
+  elements.focusScore.textContent = '--';
+  elements.sitesCount.textContent = '0';
+  elements.topicsCount.textContent = '0';
+  elements.topSites.innerHTML = '<div class="empty-state">No data yet. Start browsing to see analytics.</div>';
+  elements.recentSessions.innerHTML = '<div class="empty-state">No sessions recorded yet.</div>';
+  elements.insights.innerHTML = '<div class="empty-state">Insights will appear as you browse.</div>';
+}
+
+// Utility functions
+function formatTime(milliseconds) {
+  const minutes = Math.floor(milliseconds / 60000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
+
+function truncateText(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}

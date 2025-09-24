@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attention Analytics</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1 class="logo">Attention Analytics</h1>
+            <button class="settings-btn" id="settingsBtn" aria-label="Settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M20.46 20.46l-4.24-4.24M1.54 20.46l4.24-4.24M23 12h-6m-6 0H1"></path>
+                </svg>
+            </button>
+        </header>
+
+        <!-- Current Focus Section -->
+        <section class="current-focus">
+            <div class="focus-label">CURRENT FOCUS</div>
+            <div class="focus-content">
+                <div class="focus-category" id="currentCategory">Loading...</div>
+                <div class="focus-title" id="currentTitle">Initializing tracker...</div>
+                <div class="focus-timer">
+                    <span id="focusTime">0</span>
+                    <span class="timer-unit">min</span>
+                    <span class="focus-quality" id="focusQuality">• Deep Focus</span>
+                </div>
+            </div>
+            <div class="focus-bar">
+                <div class="focus-progress" id="focusProgress"></div>
+            </div>
+        </section>
+
+        <!-- Today's Pattern Section -->
+        <section class="today-pattern">
+            <div class="section-header">
+                <h2>Today's Pattern</h2>
+                <span class="total-time" id="totalTime">0h 0m</span>
+            </div>
+            
+            <div class="pattern-chart" id="patternChart">
+                <div class="chart-bars">
+                    <!-- Dynamically generated bars -->
+                </div>
+                <div class="chart-legend" id="chartLegend">
+                    <!-- Dynamically generated legend -->
+                </div>
+            </div>
+
+            <div class="attention-breakdown">
+                <div class="breakdown-item">
+                    <span class="breakdown-label">Deep Focus</span>
+                    <div class="breakdown-bar">
+                        <div class="breakdown-fill deep-focus" id="deepFocusBar"></div>
+                    </div>
+                    <span class="breakdown-value" id="deepFocusTime">0m</span>
+                </div>
+                <div class="breakdown-item">
+                    <span class="breakdown-label">Active Reading</span>
+                    <div class="breakdown-bar">
+                        <div class="breakdown-fill active-reading" id="activeReadingBar"></div>
+                    </div>
+                    <span class="breakdown-value" id="activeReadingTime">0m</span>
+                </div>
+                <div class="breakdown-item">
+                    <span class="breakdown-label">Scanning</span>
+                    <div class="breakdown-bar">
+                        <div class="breakdown-fill scanning" id="scanningBar"></div>
+                    </div>
+                    <span class="breakdown-value" id="scanningTime">0m</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Insight Section -->
+        <section class="quick-insight">
+            <div class="insight-icon">💡</div>
+            <div class="insight-content">
+                <p id="insightText">Start browsing to see your attention patterns</p>
+            </div>
+        </section>
+
+        <!-- Action Buttons -->
+        <section class="actions">
+            <button class="btn btn-primary" id="viewAnalytics">
+                <span>View Full Analytics</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12h14m-7-7l7 7-7 7"></path>
+                </svg>
+            </button>
+            <button class="btn btn-secondary" id="setIntention">
+                <span>Set Today's Intention</span>
+            </button>
+        </section>
+
+        <!-- Minimized Stats Bar -->
+        <footer class="stats-bar">
+            <div class="stat-item">
+                <span class="stat-label">Sites</span>
+                <span class="stat-value" id="sitesCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Topics</span>
+                <span class="stat-value" id="topicsCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Focus Score</span>
+                <span class="stat-value" id="focusScore">--</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
