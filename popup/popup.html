@@ -75,20 +75,45 @@
             </div>
         </section>
 
-        <!-- Character Display -->
-        <section class="character-display" id="characterSection">
-            <div class="no-character" id="noCharacter">
-                [NO AVATAR] - Complete missions to unlock
-            </div>
-            <div id="characterInfo" style="display: none;">
-                <div class="character-avatar minecraft-style" id="characterAvatar">
-                    <div class="minecraft-head">
-                        <div class="minecraft-face"></div>
+        <!-- Tamagotchi Pet Display -->
+        <section class="tamagotchi-section" id="tamagotchiSection">
+            <div class="pet-container">
+                <div class="pet-display" id="petDisplay">
+                    <div class="pet-sprite" id="petSprite">🥚</div>
+                    <div class="pet-animation" id="petAnimation"></div>
+                </div>
+                <div class="pet-info">
+                    <div class="pet-name" id="petName">Focus Buddy</div>
+                    <div class="pet-stage" id="petStage">[EGG]</div>
+                    <div class="pet-message" id="petMessage">Complete your first mission to hatch me!</div>
+                </div>
+                <div class="pet-stats">
+                    <div class="stat-bar">
+                        <span class="stat-label">😊</span>
+                        <div class="stat-bar-fill happiness-bar">
+                            <div class="stat-bar-inner" id="happinessBar"></div>
+                        </div>
+                        <span class="stat-value" id="happinessValue">50</span>
+                    </div>
+                    <div class="stat-bar">
+                        <span class="stat-label">⚡</span>
+                        <div class="stat-bar-fill energy-bar">
+                            <div class="stat-bar-inner" id="energyBar"></div>
+                        </div>
+                        <span class="stat-value" id="energyValue">50</span>
+                    </div>
+                    <div class="stat-bar">
+                        <span class="stat-label">📚</span>
+                        <div class="stat-bar-fill knowledge-bar">
+                            <div class="stat-bar-inner" id="knowledgeBar"></div>
+                        </div>
+                        <span class="stat-value" id="knowledgeValue">0</span>
                     </div>
                 </div>
-                <div class="character-name" id="characterName">AGENT</div>
-                <div class="character-type" id="characterType">TYPE: UNKNOWN</div>
-                <div class="character-ability" id="characterAbility">[ABILITY]: Processing...</div>
+                <div class="pet-progress">
+                    <span><span id="missionsCount">0</span> missions completed</span>
+                    <button class="evolve-btn" id="testEvolveBtn">Test +1</button>
+                </div>
             </div>
         </section>
 

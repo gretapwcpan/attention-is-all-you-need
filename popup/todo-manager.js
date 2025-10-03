@@ -134,6 +134,23 @@ class TodoManager {
         if (todo.completed) {
             todo.completedAt = new Date().toISOString();
             this.showMotivationalMessage(this.getCompletionMessage(goal, todo));
+            
+            // Notify Tamagotchi pet about mission completion
+            chrome.runtime.sendMessage({
+                action: 'missionCompleted',
+                missionData: {
+                    goalTitle: goal.title,
+                    todoTitle: todo.title,
+                    estimatedTime: todo.estimatedTime,
+                    actualTime: todo.actualTime
+                }
+            });
+            
+            // Also update pet in popup if it's open
+            chrome.runtime.sendMessage({
+                action: 'updateTamagotchi',
+                type: 'missionComplete'
+            });
         }
         
         this.saveData();

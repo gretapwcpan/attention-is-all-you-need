@@ -45,11 +45,204 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadCurrentSession();
   await loadTodayData();
   await loadCharacter();
+  await initTamagotchi();
   updateUI();
   startTimer();
   setupEventListeners();
   setupIntention();
 });
+
+// Tamagotchi Pet System
+let tamagotchiPet = null;
+
+async function initTamagotchi() {
+  try {
+    // Load pet data from storage
+    const data = await chrome.storage.local.get('tamagotchiPet');
+    if (data.tamagotchiPet) {
+      tamagotchiPet = data.tamagotchiPet;
+    } else {
+      // Create new pet
+      tamagotchiPet = {
+        name: 'Focus Buddy',
+        stage: 'egg',
+        born: Date.now(),
+        stats: {
+          happiness: 50,
+          energy: 50,
+          knowledge: 0,
+          health: 100
+        },
+        missionsCompleted: 0,
+        totalFocusTime: 0,
+        mood: 'neutral',
+        isAlive: true
+      };
+      await chrome.storage.local.set({ tamagotchiPet });
+    }
+    
+    updatePetDisplay();
+    
+    // Update pet stats periodically
+    setInterval(updatePetStats, 60000); // Every minute
+    
+    // Listen for mission completions
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'missionCompleted') {
+        onMissionComplete();
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error initializing Tamagotchi:', error);
+  }
+}
+
+function updatePetDisplay() {
+  if (!tamagotchiPet) return;
+  
+  // Use SVG images for pet stages
+  const petSprite = document.getElementById('petSprite');
+  if (petSprite) {
+    const imagePath = `image/${tamagotchiPet.stage}.svg`;
+    petSprite.innerHTML = `<img src="${imagePath}" alt="${tamagotchiPet.stage}" class="pet-image ${tamagotchiPet.mood}">`;
+  }
+  
+  // Update pet stage
+  const petStage = document.getElementById('petStage');
+  if (petStage) {
+    petStage.textContent = `[${tamagotchiPet.stage.toUpperCase()}]`;
+  }
+  
+  // Update pet message
+  const petMessage = document.getElementById('petMessage');
+  if (petMessage) {
+    petMessage.textContent = getPetMessage();
+  }
+  
+  // Update stats bars
+  updateStatBar('happiness', tamagotchiPet.stats.happiness);
+  updateStatBar('energy', tamagotchiPet.stats.energy);
+  updateStatBar('knowledge', tamagotchiPet.stats.knowledge);
+  
+  // Update missions count
+  const missionsCount = document.getElementById('missionsCount');
+  if (missionsCount) {
+    missionsCount.textContent = tamagotchiPet.missionsCompleted;
+  }
+}
+
+function updateStatBar(stat, value) {
+  const bar = document.getElementById(`${stat}Bar`);
+  const valueEl = document.getElementById(`${stat}Value`);
+  
+  if (bar) {
+    bar.style.width = `${value}%`;
+  }
+  if (valueEl) {
+    valueEl.textContent = value;
+  }
+}
+
+function getPetMessage() {
+  if (tamagotchiPet.stage === 'egg' && tamagotchiPet.missionsCompleted === 0) {
+    return 'Complete your first mission to hatch me!';
+  }
+  
+  switch (tamagotchiPet.mood) {
+    case 'sad':
+      return 'I need some attention... Complete a mission to cheer me up!';
+    case 'sleeping':
+      return 'Zzz... Taking a quick nap...';
+    case 'studying':
+      return 'Learning new things with you!';
+    case 'excited':
+      return 'Yay! Great job on that mission!';
+    case 'happy':
+      return "I'm feeling great! Keep up the good work!";
+    default:
+      return `${tamagotchiPet.missionsCompleted} missions completed! Let's do more!`;
+  }
+}
+
+function updatePetStats() {
+  if (!tamagotchiPet) return;
+  
+  // Decrease happiness and energy over time
+  tamagotchiPet.stats.happiness = Math.max(0, tamagotchiPet.stats.happiness - 1);
+  tamagotchiPet.stats.energy = Math.max(0, tamagotchiPet.stats.energy - 1);
+  
+  // Update mood based on stats
+  if (tamagotchiPet.stats.happiness < 20) {
+    tamagotchiPet.mood = 'sad';
+  } else if (tamagotchiPet.stats.happiness > 80) {
+    tamagotchiPet.mood = 'happy';
+  } else if (tamagotchiPet.stats.energy < 20) {
+    tamagotchiPet.mood = 'sleeping';
+  } else {
+    tamagotchiPet.mood = 'neutral';
+  }
+  
+  // Save and update display
+  chrome.storage.local.set({ tamagotchiPet });
+  updatePetDisplay();
+}
+
+async function onMissionComplete() {
+  if (!tamagotchiPet) return;
+  
+  tamagotchiPet.missionsCompleted++;
+  tamagotchiPet.stats.happiness = Math.min(100, tamagotchiPet.stats.happiness + 20);
+  tamagotchiPet.stats.energy = Math.min(100, tamagotchiPet.stats.energy + 10);
+  tamagotchiPet.stats.knowledge = Math.min(100, tamagotchiPet.stats.knowledge + 5);
+  tamagotchiPet.mood = 'excited';
+  
+  // Check for evolution
+  if (tamagotchiPet.missionsCompleted >= 16) {
+    tamagotchiPet.stage = 'adult';
+  } else if (tamagotchiPet.missionsCompleted >= 6) {
+    tamagotchiPet.stage = 'teen';
+  } else if (tamagotchiPet.missionsCompleted >= 1) {
+    tamagotchiPet.stage = 'baby';
+  }
+  
+  // Add celebration animation
+  const petAnimation = document.getElementById('petAnimation');
+  if (petAnimation) {
+    petAnimation.classList.add('celebrating');
+    setTimeout(() => {
+      petAnimation.classList.remove('celebrating');
+    }, 1000);
+  }
+  
+  await chrome.storage.local.set({ tamagotchiPet });
+  updatePetDisplay();
+  
+  // Reset mood after a few seconds
+  setTimeout(() => {
+    tamagotchiPet.mood = 'happy';
+    updatePetDisplay();
+  }, 5000);
+}
+
+// Link focus states to pet energy
+function updatePetWithFocusState() {
+  if (!tamagotchiPet || !currentSession) return;
+  
+  const elapsed = Date.now() - currentSession.startTime;
+  const minutes = elapsed / 60000;
+  
+  if (minutes >= 10) {
+    // Deep focus boosts energy
+    tamagotchiPet.stats.energy = Math.min(100, tamagotchiPet.stats.energy + 2);
+    tamagotchiPet.mood = 'studying';
+  } else if (minutes >= 5) {
+    // Active reading maintains energy
+    tamagotchiPet.stats.energy = Math.min(100, tamagotchiPet.stats.energy + 1);
+  }
+  
+  updatePetDisplay();
+}
 
 // Load AI-generated summaries
 async function loadAISummaries() {
@@ -701,6 +894,15 @@ function setupEventListeners() {
   if (elements.viewTodos) {
     elements.viewTodos.addEventListener('click', () => {
       chrome.tabs.create({ url: chrome.runtime.getURL('popup/todo-manager.html') });
+    });
+  }
+  
+  // Test evolution button
+  const testEvolveBtn = document.getElementById('testEvolveBtn');
+  if (testEvolveBtn) {
+    testEvolveBtn.addEventListener('click', () => {
+      // Simulate mission completion
+      onMissionComplete();
     });
   }
   

@@ -484,6 +484,22 @@ async function handleMessage(request, sender, sendResponse) {
         sendResponse({ success: true, data });
         break;
         
+      case 'missionCompleted':
+        // Handle mission completion for Tamagotchi
+        await handleMissionCompletion(request.missionData);
+        sendResponse({ success: true });
+        break;
+        
+      case 'updateTamagotchi':
+        // Forward update to all open popups
+        chrome.runtime.sendMessage({
+          action: 'missionCompleted'
+        }).catch(() => {
+          // Popup might not be open, ignore error
+        });
+        sendResponse({ success: true });
+        break;
+        
       case 'getWeekData':
         const weekData = await getWeekAnalytics();
         sendResponse({ success: true, data: weekData });
@@ -602,6 +618,60 @@ function generateEmptyData() {
     topics: new Set(),
     sessions: []
   };
+}
+
+// Handle mission completion for Tamagotchi
+async function handleMissionCompletion(missionData) {
+  try {
+    // Load current pet data
+    const petData = await getFromStorage('tamagotchiPet');
+    if (!petData) {
+      // Create new pet if doesn't exist
+      const newPet = {
+        name: 'Focus Buddy',
+        stage: 'egg',
+        born: Date.now(),
+        stats: {
+          happiness: 50,
+          energy: 50,
+          knowledge: 0,
+          health: 100
+        },
+        missionsCompleted: 0,
+        totalFocusTime: 0,
+        mood: 'neutral',
+        isAlive: true
+      };
+      await setInStorage('tamagotchiPet', newPet);
+    }
+    
+    // Update pet stats for mission completion
+    const pet = await getFromStorage('tamagotchiPet');
+    pet.missionsCompleted++;
+    pet.stats.happiness = Math.min(100, pet.stats.happiness + 20);
+    pet.stats.energy = Math.min(100, pet.stats.energy + 10);
+    pet.stats.knowledge = Math.min(100, pet.stats.knowledge + 5);
+    pet.mood = 'excited';
+    
+    // Check for evolution
+    if (pet.missionsCompleted >= 16) {
+      pet.stage = 'adult';
+    } else if (pet.missionsCompleted >= 6) {
+      pet.stage = 'teen';
+    } else if (pet.missionsCompleted >= 1) {
+      pet.stage = 'baby';
+    }
+    
+    // Save updated pet data
+    await setInStorage('tamagotchiPet', pet);
+    
+    // Log mission completion
+    console.log('Mission completed:', missionData);
+    console.log('Pet updated:', pet);
+    
+  } catch (error) {
+    console.error('Error handling mission completion:', error);
+  }
 }
 
 // Listen for browser idle state - only if API is available
