@@ -125,7 +125,37 @@ async function handleUserMessage() {
   } catch (error) {
     console.error('Error generating response:', error);
     hideTyping();
-    const errorMessage = "I'm having trouble processing that right now. Please make sure Chrome AI is enabled.";
+    
+    // Capture the actual error details
+    let errorDetails = '';
+    if (error.message) {
+      errorDetails = error.message;
+    } else if (typeof error === 'string') {
+      errorDetails = error;
+    } else {
+      errorDetails = 'Unknown error occurred';
+    }
+    
+    // Create a more informative error message
+    let errorMessage = "I'm having trouble processing that right now.\n\n";
+    
+    // Add specific error details
+    errorMessage += `Error details: ${errorDetails}\n\n`;
+    
+    // Add helpful instructions based on the error
+    if (errorDetails.includes('not available') || errorDetails.includes('AI service')) {
+      errorMessage += "Please make sure Chrome AI is enabled:\n";
+      errorMessage += "1. Go to chrome://flags/#optimization-guide-on-device-model\n";
+      errorMessage += "2. Go to chrome://flags/#prompt-api-for-gemini-nano\n";
+      errorMessage += "3. Enable both flags and restart Chrome";
+    } else if (errorDetails.includes('session') || errorDetails.includes('abort')) {
+      errorMessage += "The AI session was interrupted. Please try again.";
+    } else if (errorDetails.includes('token') || errorDetails.includes('limit')) {
+      errorMessage += "The message was too long. Please try a shorter message.";
+    } else {
+      errorMessage += "Please check the console for more details.";
+    }
+    
     addMessage(errorMessage, 'coach');
     conversationContext.push({ role: 'assistant', content: errorMessage });
   }
@@ -133,15 +163,22 @@ async function handleUserMessage() {
 
 // Generate response using Gemini Nano with full context
 async function generateAIResponse(userMessage) {
-  if (!aiService || !aiService.available) {
-    throw new Error('AI service not available');
-  }
-  
-  // Build context about current reading
-  const readingContext = buildReadingContext();
-  
-  // Create a comprehensive prompt with full conversation history
-  const prompt = `You are an AI Reading Coach helping users understand and remember what they read. Be helpful, specific, and action-oriented.
+  try {
+    // Check AI service availability with detailed status
+    if (!aiService) {
+      throw new Error('AI service not initialized. Please refresh the page.');
+    }
+    
+    if (!aiService.available) {
+      const status = await aiService.checkAvailability();
+      throw new Error(`AI service not available. Status: ${status.message}`);
+    }
+    
+    // Build context about current reading
+    const readingContext = buildReadingContext();
+    
+    // Create a comprehensive prompt with full conversation history
+    const prompt = `You are an AI Reading Coach helping users understand and remember what they read. Be helpful, specific, and action-oriented.
 
 Current Reading Context:
 ${readingContext}
@@ -161,8 +198,29 @@ Instructions:
 
 Response:`;
 
-  const response = await aiService.generateText(prompt);
-  return response;
+    // Add options for language specification
+    const options = {
+      systemPrompt: "You are an AI Reading Coach helping users understand and remember what they read. Please respond in English.",
+      temperature: 0.8,
+      topK: 40
+    };
+
+    const response = await aiService.generateText(prompt, options);
+    return response;
+    
+  } catch (error) {
+    // Log detailed error information
+    console.error('generateAIResponse error details:', {
+      error: error,
+      message: error.message,
+      stack: error.stack,
+      aiServiceAvailable: aiService?.available,
+      aiServiceStatus: aiService?.availability
+    });
+    
+    // Re-throw with more context
+    throw error;
+  }
 }
 
 // Build context about current reading sessions
@@ -244,7 +302,12 @@ Provide exactly 3 insights that are:
 
 Format as a numbered list.`;
       
-      const response = await aiService.generateText(prompt);
+      // Add language specification options
+      const options = {
+        systemPrompt: "You are a helpful analytics assistant providing actionable insights. Please respond in English.",
+        temperature: 0.7
+      };
+      const response = await aiService.generateText(prompt, options);
       insights = response;
     } else {
       // Fallback insights

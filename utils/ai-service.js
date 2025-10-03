@@ -20,23 +20,13 @@ export class AIService {
     }
 
     try {
-      // Check if Chrome AI APIs are available
-      if (!('ai' in self) || !('languageModel' in self.ai)) {
-        console.log('Chrome AI APIs not available. Please enable flags:');
-        console.log('chrome://flags/#optimization-guide-on-device-model');
-        console.log('chrome://flags/#prompt-api-for-gemini-nano');
-        this.available = false;
-        this.initialized = true;
-        return false;
-      }
-
       // Check availability using the new method
-      this.availability = await self.ai.languageModel.availability();
+      this.availability = await self.LanguageModel.availability();
       console.log('AI Availability status:', this.availability);
 
       // Get model parameters
       try {
-        this.modelParams = await self.ai.languageModel.params();
+        this.modelParams = await self.LanguageModel.params();
         console.log('Model parameters:', this.modelParams);
       } catch (paramsError) {
         console.log('Could not get model params:', paramsError);
@@ -49,6 +39,7 @@ export class AIService {
         };
       }
 
+      // Handle both old and new availability values
       if (this.availability === 'no') {
         console.log('Gemini Nano is not available on this device');
         this.available = false;
@@ -56,18 +47,14 @@ export class AIService {
         return false;
       }
 
-      // Try to create a session
-      try {
-        await this.createSession();
-      } catch (createError) {
-        console.log('Failed to create initial session:', createError);
-        
-        if (this.availability === 'after-download') {
-          console.log('Gemini Nano needs to be downloaded. Please wait for the model to download.');
-          console.log('You may need to restart Chrome after the download completes.');
-        }
-        
-        this.available = false;
+      // Mark as available but don't create session yet (will be created on first use)
+      if (this.availability === 'readily' || this.availability === 'available') {
+        this.available = true;
+        console.log('AI is ready to use (session will be created on first use)');
+      } else if (this.availability === 'after-download') {
+        // For after-download, we might want to try creating a session to trigger download
+        console.log('Gemini Nano needs to be downloaded. Session will be created on first use.');
+        this.available = true; // Mark as available, session will trigger download on first use
       }
 
       this.initialized = true;
@@ -95,14 +82,16 @@ export class AIService {
     // Create new abort controller for session management
     this.abortController = new AbortController();
     
-    // Prepare session configuration
+    // Prepare session configuration with language specification
     const sessionConfig = {
       signal: this.abortController.signal,
       temperature: Math.min(options.temperature || 0.8, this.modelParams?.maxTemperature || 2),
-      topK: Math.min(options.topK || 40, this.modelParams?.maxTopK || 128)
+      topK: Math.min(options.topK || 40, this.modelParams?.maxTopK || 128),
+      // Add system prompt with language specification to avoid warnings
+      systemPrompt: options.systemPrompt || "You are a helpful assistant. Please respond in English."
     };
 
-    // Add initial prompts if provided
+    // Add initial prompts if provided (for backward compatibility)
     if (options.initialPrompts) {
       sessionConfig.initialPrompts = options.initialPrompts;
     }
@@ -126,7 +115,7 @@ export class AIService {
     }
 
     try {
-      this.session = await self.ai.languageModel.create(sessionConfig);
+      this.session = await self.LanguageModel.create(sessionConfig);
       
       if (this.session) {
         this.available = true;
@@ -161,13 +150,14 @@ export class AIService {
   getAvailabilityMessage() {
     switch (this.availability) {
       case 'readily':
+      case 'available':  // Handle new API response
         return 'AI is ready to use';
       case 'after-download':
         return 'AI model is downloading, please wait...';
       case 'no':
         return 'AI is not available on this device';
       default:
-        return 'Unknown availability status';
+        return `Unknown availability status: ${this.availability}`;
     }
   }
 
@@ -176,8 +166,8 @@ export class AIService {
    */
   async generateText(prompt, options = {}) {
     if (!this.available || !this.session) {
-      // Try to create a session if not available
-      if (this.availability === 'readily' || this.availability === 'after-download') {
+      // Try to create a session if not available (handle both old and new API responses)
+      if (this.availability === 'readily' || this.availability === 'available' || this.availability === 'after-download') {
         try {
           await this.createSession(options);
         } catch (error) {
@@ -261,14 +251,9 @@ export class AIService {
   async generateCharacter(pageData) {
     const prompt = this.buildCharacterPrompt(pageData);
     
-    // Use initial prompts for better context
+    // Use system prompt for better context
     const options = {
-      initialPrompts: [
-        {
-          role: 'system',
-          content: 'You are a creative assistant that generates companion characters based on web content. Always respond with valid JSON.'
-        }
-      ]
+      systemPrompt: 'You are a creative assistant that generates companion characters based on web content. Always respond with valid JSON in English.'
     };
     
     try {
@@ -399,12 +384,7 @@ Provide exactly 3 insights, each max 15 words, focusing on:
 Format as numbered list.`;
 
     const options = {
-      initialPrompts: [
-        {
-          role: 'system',
-          content: 'You are a helpful analytics assistant providing concise, actionable insights about browsing patterns.'
-        }
-      ],
+      systemPrompt: 'You are a helpful analytics assistant providing concise, actionable insights about browsing patterns in English.',
       temperature: 0.7 // Lower temperature for more consistent insights
     };
 

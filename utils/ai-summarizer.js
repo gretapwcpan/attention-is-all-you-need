@@ -54,7 +54,11 @@ class AISummarizer {
     `;
 
     try {
-      const summary = await this.aiService.generateText(prompt);
+      // Include language specification to avoid warnings
+      const options = {
+        systemPrompt: "You are an AI reading coach helping users understand what they read. Please respond in English."
+      };
+      const summary = await this.aiService.generateText(prompt, options);
       return {
         title: this.extractTopicFromTitle(title),
         text: summary,
@@ -97,7 +101,11 @@ class AISummarizer {
     `;
 
     try {
-      const summary = await this.aiService.generateText(prompt);
+      // Include language specification to avoid warnings
+      const options = {
+        systemPrompt: "You are a browser content analyst providing daily reading summaries. Please respond in English."
+      };
+      const summary = await this.aiService.generateText(prompt, options);
       return {
         title: 'Daily Reading Summary',
         text: summary,
