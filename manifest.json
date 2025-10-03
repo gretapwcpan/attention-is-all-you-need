@@ -6,16 +6,18 @@
   "permissions": [
     "storage",
     "tabs",
-    "history",
     "activeTab",
     "scripting",
-    "alarms"
+    "idle",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "background": {
-    "service_worker": "background/service-worker.js"
+    "service_worker": "background/service-worker.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "popup/popup.html"

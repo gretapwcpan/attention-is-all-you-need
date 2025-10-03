@@ -1,401 +1,350 @@
-// Browsing Tracker for You Are What You Read Extension
-
-import storageManager from './storage.js';
+// Browsing Tracker - Core analytics functionality
 
 export class BrowsingTracker {
   constructor() {
-    this.sessionCache = new Map();
+    this.sessions = [];
     this.domainStats = new Map();
   }
 
-  // Add a browsing session
   async addSession(sessionData) {
-    // Enrich session data
-    const enrichedSession = {
-      ...sessionData,
-      id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      date: new Date(sessionData.timestamp).toDateString(),
-      hour: new Date(sessionData.timestamp).getHours(),
-      dayOfWeek: new Date(sessionData.timestamp).getDay(),
-      readingSpeed: this.calculateReadingSpeed(sessionData)
-    };
-
-    // Update domain stats
-    this.updateDomainStats(enrichedSession);
-
-    // Save to storage
-    await storageManager.addBrowsingSession(enrichedSession);
-
-    // Update cache
-    this.sessionCache.set(enrichedSession.id, enrichedSession);
-
-    return enrichedSession;
+    // Add session to today's data
+    const today = new Date().toDateString();
+    const sessionsKey = `sessions_${today}`;
+    
+    try {
+      const result = await chrome.storage.local.get([sessionsKey]);
+      const sessions = result[sessionsKey] || [];
+      
+      // Add new session
+      sessions.push({
+        ...sessionData,
+        id: Date.now().toString(),
+        timestamp: Date.now()
+      });
+      
+      // Keep only last 100 sessions per day
+      if (sessions.length > 100) {
+        sessions.shift();
+      }
+      
+      await chrome.storage.local.set({ [sessionsKey]: sessions });
+      
+      // Update domain stats
+      this.updateDomainStats(sessionData);
+      
+      return sessionData;
+    } catch (error) {
+      console.error('Error adding session:', error);
+      return null;
+    }
   }
 
-  // Get today's browsing data
   async getTodaysBrowsingData() {
-    const sessions = await storageManager.getTodaysBrowsing();
+    const today = new Date().toDateString();
+    const sessionsKey = `sessions_${today}`;
     
-    // Enrich with aggregated stats
-    const stats = this.calculateDailyStats(sessions);
-    
-    return {
-      sessions,
-      stats,
-      summary: this.generateDailySummary(sessions, stats)
-    };
+    try {
+      const result = await chrome.storage.local.get([sessionsKey]);
+      const sessions = result[sessionsKey] || [];
+      
+      // Calculate daily stats
+      const stats = this.calculateDailyStats(sessions);
+      
+      // Generate daily summary
+      const summary = this.generateDailySummary(sessions, stats);
+      
+      return {
+        sessions,
+        stats,
+        summary
+      };
+    } catch (error) {
+      console.error('Error getting today\'s data:', error);
+      return {
+        sessions: [],
+        stats: {},
+        summary: {}
+      };
+    }
   }
 
-  // Calculate daily statistics
   calculateDailyStats(sessions) {
     const stats = {
       totalSessions: sessions.length,
       totalTime: 0,
-      uniqueDomains: new Set(),
-      categories: {},
+      deepFocusSessions: 0,
+      activeReadingSessions: 0,
+      scanningSessions: 0,
+      averageSessionDuration: 0,
+      categoryCounts: {},
+      domainCounts: {},
       peakHour: null,
-      averageSessionTime: 0,
-      longestSession: null,
-      mostVisitedDomain: null,
-      readingTime: 0,
-      videoTime: 0,
-      socialTime: 0
+      longestSession: null
     };
-
+    
+    if (sessions.length === 0) return stats;
+    
+    let longestDuration = 0;
     const hourCounts = new Array(24).fill(0);
-    const domainCounts = {};
-
+    
     sessions.forEach(session => {
-      // Time stats
-      stats.totalTime += session.timeSpent || 0;
+      // Total time
+      stats.totalTime += session.duration || 0;
       
-      // Domain stats
-      stats.uniqueDomains.add(session.domain);
-      domainCounts[session.domain] = (domainCounts[session.domain] || 0) + 1;
+      // Focus type counts
+      if (session.focusType === 'deep') stats.deepFocusSessions++;
+      else if (session.focusType === 'active') stats.activeReadingSessions++;
+      else if (session.focusType === 'scanning') stats.scanningSessions++;
       
-      // Category stats
-      const category = session.category || 'other';
-      stats.categories[category] = (stats.categories[category] || 0) + 1;
+      // Category counts
+      const category = session.category || 'Uncategorized';
+      stats.categoryCounts[category] = (stats.categoryCounts[category] || 0) + 1;
       
-      // Hour distribution
-      const hour = new Date(session.timestamp).getHours();
-      hourCounts[hour]++;
+      // Domain counts
+      const domain = session.domain || 'unknown';
+      stats.domainCounts[domain] = (stats.domainCounts[domain] || 0) + 1;
       
-      // Longest session
-      if (!stats.longestSession || session.timeSpent > stats.longestSession.timeSpent) {
+      // Track longest session
+      if (session.duration > longestDuration) {
+        longestDuration = session.duration;
         stats.longestSession = session;
       }
       
-      // Category-specific time
-      if (category === 'education' || category === 'article' || category === 'news') {
-        stats.readingTime += session.timeSpent || 0;
-      } else if (category === 'video' || category === 'entertainment') {
-        stats.videoTime += session.timeSpent || 0;
-      } else if (category === 'social') {
-        stats.socialTime += session.timeSpent || 0;
-      }
+      // Track hour distribution
+      const hour = new Date(session.timestamp).getHours();
+      hourCounts[hour]++;
     });
-
-    // Calculate derived stats
-    stats.uniqueDomains = stats.uniqueDomains.size;
-    stats.averageSessionTime = sessions.length > 0 ? stats.totalTime / sessions.length : 0;
+    
+    // Calculate averages
+    stats.averageSessionDuration = Math.round(stats.totalTime / sessions.length);
     
     // Find peak hour
-    let maxHourCount = 0;
+    let maxCount = 0;
+    let peakHour = 0;
     hourCounts.forEach((count, hour) => {
-      if (count > maxHourCount) {
-        maxHourCount = count;
-        stats.peakHour = hour;
+      if (count > maxCount) {
+        maxCount = count;
+        peakHour = hour;
       }
     });
+    stats.peakHour = peakHour;
     
-    // Find most visited domain
-    let maxDomainCount = 0;
-    for (const [domain, count] of Object.entries(domainCounts)) {
-      if (count > maxDomainCount) {
-        maxDomainCount = count;
-        stats.mostVisitedDomain = domain;
-      }
-    }
-
     return stats;
   }
 
-  // Generate daily summary
   generateDailySummary(sessions, stats) {
-    if (sessions.length === 0) {
-      return {
-        headline: "No browsing activity yet today",
-        mood: "waiting",
-        highlights: [],
-        insights: []
-      };
+    const summary = {
+      headline: this.generateHeadline(stats),
+      highlights: this.extractHighlights(sessions),
+      insights: this.generateInsights(stats),
+      focusQuality: this.calculateFocusQuality(stats)
+    };
+    
+    return summary;
+  }
+
+  generateHeadline(stats) {
+    if (stats.totalSessions === 0) {
+      return "No browsing activity yet today";
     }
-
-    // Determine overall mood
-    const mood = this.determineDailyMood(stats);
     
-    // Generate headline
-    const headline = this.generateHeadline(stats, mood);
+    const hours = Math.floor(stats.totalTime / 3600000);
+    const minutes = Math.floor((stats.totalTime % 3600000) / 60000);
     
-    // Extract highlights
-    const highlights = this.extractHighlights(sessions);
-    
-    // Generate insights
-    const insights = this.generateInsights(stats);
-
-    return {
-      headline,
-      mood,
-      highlights,
-      insights
-    };
+    if (stats.deepFocusSessions > stats.totalSessions * 0.5) {
+      return `Deep focus day: ${hours}h ${minutes}m of quality reading`;
+    } else if (stats.scanningSessions > stats.totalSessions * 0.6) {
+      return `Quick browsing: ${stats.totalSessions} short sessions today`;
+    } else {
+      return `Balanced browsing: ${hours}h ${minutes}m across ${stats.totalSessions} sessions`;
+    }
   }
 
-  // Determine daily mood based on browsing patterns
-  determineDailyMood(stats) {
-    const { categories, totalTime, readingTime, socialTime, videoTime } = stats;
-    
-    // Calculate percentages
-    const readingPercent = totalTime > 0 ? (readingTime / totalTime) * 100 : 0;
-    const socialPercent = totalTime > 0 ? (socialTime / totalTime) * 100 : 0;
-    const videoPercent = totalTime > 0 ? (videoTime / totalTime) * 100 : 0;
-    
-    if (readingPercent > 50) return 'studious';
-    if (socialPercent > 40) return 'social';
-    if (videoPercent > 40) return 'entertained';
-    if (stats.uniqueDomains > 20) return 'exploratory';
-    if (stats.totalTime < 30 * 60000) return 'light';
-    if (stats.totalTime > 180 * 60000) return 'intense';
-    
-    return 'balanced';
-  }
-
-  // Generate headline based on stats
-  generateHeadline(stats, mood) {
-    const headlines = {
-      studious: `📚 Learning mode activated! ${Math.round(stats.readingTime / 60000)} minutes of reading`,
-      social: `🦋 Social butterfly day with ${stats.socialTime / 60000} minutes connecting`,
-      entertained: `🎬 Entertainment focused with ${stats.videoTime / 60000} minutes of content`,
-      exploratory: `🗺️ Digital explorer! Visited ${stats.uniqueDomains} unique sites`,
-      light: `☁️ Light browsing day with ${Math.round(stats.totalTime / 60000)} minutes online`,
-      intense: `🔥 Power user mode! ${Math.round(stats.totalTime / 60000)} minutes of browsing`,
-      balanced: `⚖️ Balanced browsing across ${Object.keys(stats.categories).length} categories`
-    };
-    
-    return headlines[mood] || headlines.balanced;
-  }
-
-  // Extract highlights from sessions
   extractHighlights(sessions) {
     const highlights = [];
     
-    // Find interesting sessions
-    const longSessions = sessions.filter(s => s.timeSpent > 10 * 60000);
-    const educationalSessions = sessions.filter(s => s.category === 'education');
-    const uniqueDomains = [...new Set(sessions.map(s => s.domain))];
+    // Find longest session
+    const longestSession = sessions.reduce((max, session) => 
+      (session.duration > (max?.duration || 0)) ? session : max, null);
     
-    if (longSessions.length > 0) {
+    if (longestSession) {
       highlights.push({
-        type: 'focus',
-        text: `Deep focus on ${longSessions[0].title || longSessions[0].domain}`,
-        icon: '🎯'
+        type: 'longest',
+        title: longestSession.title,
+        duration: longestSession.duration,
+        category: longestSession.category
       });
     }
     
-    if (educationalSessions.length >= 3) {
-      highlights.push({
-        type: 'learning',
-        text: `Learning spree with ${educationalSessions.length} educational resources`,
-        icon: '🎓'
-      });
-    }
+    // Find most visited category
+    const categoryMap = new Map();
+    sessions.forEach(session => {
+      const category = session.category || 'Uncategorized';
+      categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+    });
     
-    if (uniqueDomains.length >= 10) {
-      highlights.push({
-        type: 'exploration',
-        text: `Explored ${uniqueDomains.length} different websites`,
-        icon: '🌍'
-      });
-    }
+    const topCategory = Array.from(categoryMap.entries())
+      .sort((a, b) => b[1] - a[1])[0];
     
-    // Time-based highlights
-    const morningSession = sessions.find(s => new Date(s.timestamp).getHours() < 9);
-    if (morningSession) {
+    if (topCategory) {
       highlights.push({
-        type: 'early',
-        text: 'Early bird browsing session',
-        icon: '🌅'
+        type: 'topCategory',
+        category: topCategory[0],
+        count: topCategory[1]
       });
     }
     
     return highlights;
   }
 
-  // Generate insights from stats
   generateInsights(stats) {
     const insights = [];
     
+    // Focus quality insight
+    const focusRatio = stats.deepFocusSessions / (stats.totalSessions || 1);
+    if (focusRatio > 0.5) {
+      insights.push("Excellent focus quality today! Over half your sessions were deep focus.");
+    } else if (focusRatio < 0.2) {
+      insights.push("Consider longer, uninterrupted sessions for deeper focus.");
+    }
+    
+    // Peak hour insight
     if (stats.peakHour !== null) {
-      insights.push(`Most active at ${stats.peakHour}:00`);
+      const hourStr = stats.peakHour > 12 ? 
+        `${stats.peakHour - 12}PM` : 
+        `${stats.peakHour === 0 ? 12 : stats.peakHour}AM`;
+      insights.push(`Most active around ${hourStr}`);
     }
     
-    if (stats.mostVisitedDomain) {
-      insights.push(`Favorite site: ${stats.mostVisitedDomain}`);
-    }
-    
-    if (stats.averageSessionTime > 0) {
-      const avgMinutes = Math.round(stats.averageSessionTime / 60000);
-      insights.push(`Average session: ${avgMinutes} minutes`);
-    }
-    
-    // Category distribution insight
-    const topCategory = Object.entries(stats.categories)
-      .sort((a, b) => b[1] - a[1])[0];
-    if (topCategory) {
-      insights.push(`Mostly ${topCategory[0]} content today`);
+    // Category diversity insight
+    const categoryCount = Object.keys(stats.categoryCounts).length;
+    if (categoryCount > 5) {
+      insights.push("Diverse browsing across many categories today.");
+    } else if (categoryCount === 1) {
+      insights.push("Focused browsing in a single category.");
     }
     
     return insights;
   }
 
-  // Calculate reading speed
-  calculateReadingSpeed(session) {
-    if (!session.content || !session.timeSpent) return null;
+  calculateFocusQuality(stats) {
+    if (stats.totalSessions === 0) return 0;
     
-    const words = session.content.split(/\s+/).length;
-    const minutes = session.timeSpent / 60000;
+    const deepWeight = 1.0;
+    const activeWeight = 0.7;
+    const scanningWeight = 0.3;
     
-    if (minutes > 0) {
-      return Math.round(words / minutes);
-    }
+    const weightedScore = 
+      (stats.deepFocusSessions * deepWeight) +
+      (stats.activeReadingSessions * activeWeight) +
+      (stats.scanningSessions * scanningWeight);
     
-    return null;
+    return Math.round((weightedScore / stats.totalSessions) * 100);
   }
 
-  // Update domain statistics
   updateDomainStats(session) {
-    const domain = session.domain;
-    if (!domain) return;
+    if (!session.domain) return;
     
-    if (!this.domainStats.has(domain)) {
-      this.domainStats.set(domain, {
-        visits: 0,
-        totalTime: 0,
-        categories: new Set(),
-        lastVisit: null
-      });
-    }
-    
-    const stats = this.domainStats.get(domain);
-    stats.visits++;
-    stats.totalTime += session.timeSpent || 0;
-    stats.categories.add(session.category);
-    stats.lastVisit = session.timestamp;
-  }
-
-  // Get browsing patterns
-  async getBrowsingPatterns() {
-    const history = await storageManager.get('browsingHistory') || [];
-    
-    const patterns = {
-      timeDistribution: new Array(24).fill(0),
-      dayDistribution: new Array(7).fill(0),
-      categoryDistribution: {},
-      topDomains: [],
-      browsingHabits: []
+    const stats = this.domainStats.get(session.domain) || {
+      totalTime: 0,
+      visitCount: 0,
+      lastVisit: null
     };
     
-    // Analyze history
-    history.forEach(session => {
-      // Time distribution
-      const hour = new Date(session.timestamp).getHours();
-      patterns.timeDistribution[hour]++;
-      
-      // Day distribution
-      const day = new Date(session.timestamp).getDay();
-      patterns.dayDistribution[day]++;
-      
-      // Category distribution
-      const category = session.category || 'other';
-      patterns.categoryDistribution[category] = 
-        (patterns.categoryDistribution[category] || 0) + 1;
-    });
+    stats.totalTime += session.duration || 0;
+    stats.visitCount++;
+    stats.lastVisit = Date.now();
     
-    // Get top domains
-    const domainCounts = {};
-    history.forEach(session => {
-      if (session.domain) {
-        domainCounts[session.domain] = (domainCounts[session.domain] || 0) + 1;
-      }
-    });
-    
-    patterns.topDomains = Object.entries(domainCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([domain, count]) => ({ domain, count }));
-    
-    // Identify habits
-    patterns.browsingHabits = this.identifyHabits(patterns);
-    
-    return patterns;
+    this.domainStats.set(session.domain, stats);
   }
 
-  // Identify browsing habits
-  identifyHabits(patterns) {
-    const habits = [];
+  async getBrowsingPatterns() {
+    const patterns = {
+      daily: [],
+      weekly: [],
+      topDomains: [],
+      categoryTrends: {}
+    };
     
-    // Find peak browsing time
-    const peakHour = patterns.timeDistribution.indexOf(
-      Math.max(...patterns.timeDistribution)
-    );
-    habits.push({
-      type: 'peak_time',
-      description: `Most active at ${peakHour}:00`,
-      strength: 'strong'
-    });
-    
-    // Find most active day
-    const peakDay = patterns.dayDistribution.indexOf(
-      Math.max(...patterns.dayDistribution)
-    );
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    habits.push({
-      type: 'peak_day',
-      description: `Most active on ${days[peakDay]}s`,
-      strength: 'medium'
-    });
-    
-    // Dominant category
-    const topCategory = Object.entries(patterns.categoryDistribution)
-      .sort((a, b) => b[1] - a[1])[0];
-    if (topCategory) {
-      habits.push({
-        type: 'preferred_content',
-        description: `Prefers ${topCategory[0]} content`,
-        strength: 'strong'
+    try {
+      // Get last 7 days of data
+      for (let i = 0; i < 7; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateString = date.toDateString();
+        const sessionsKey = `sessions_${dateString}`;
+        
+        const result = await chrome.storage.local.get([sessionsKey]);
+        const sessions = result[sessionsKey] || [];
+        
+        if (sessions.length > 0) {
+          const stats = this.calculateDailyStats(sessions);
+          patterns.daily.push({
+            date: dateString,
+            stats,
+            sessionCount: sessions.length
+          });
+        }
+      }
+      
+      // Calculate top domains
+      const domainTotals = new Map();
+      patterns.daily.forEach(day => {
+        Object.entries(day.stats.domainCounts).forEach(([domain, count]) => {
+          domainTotals.set(domain, (domainTotals.get(domain) || 0) + count);
+        });
       });
+      
+      patterns.topDomains = Array.from(domainTotals.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([domain, count]) => ({ domain, count }));
+      
+      // Calculate category trends
+      patterns.daily.forEach(day => {
+        Object.entries(day.stats.categoryCounts).forEach(([category, count]) => {
+          if (!patterns.categoryTrends[category]) {
+            patterns.categoryTrends[category] = [];
+          }
+          patterns.categoryTrends[category].push({
+            date: day.date,
+            count
+          });
+        });
+      });
+      
+      return patterns;
+    } catch (error) {
+      console.error('Error getting browsing patterns:', error);
+      return patterns;
     }
-    
-    return habits;
   }
 
-  // Get session by ID
-  getSession(sessionId) {
-    return this.sessionCache.get(sessionId);
-  }
-
-  // Clear old sessions from cache
-  clearOldSessions() {
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    
-    for (const [id, session] of this.sessionCache.entries()) {
-      if (session.timestamp < sevenDaysAgo) {
-        this.sessionCache.delete(id);
+  async clearOldSessions() {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 30); // Keep 30 days of data
+      
+      const allKeys = await chrome.storage.local.get(null);
+      const keysToRemove = [];
+      
+      Object.keys(allKeys).forEach(key => {
+        if (key.startsWith('sessions_')) {
+          const dateString = key.replace('sessions_', '');
+          const sessionDate = new Date(dateString);
+          
+          if (sessionDate < cutoffDate) {
+            keysToRemove.push(key);
+          }
+        }
+      });
+      
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log(`Cleared ${keysToRemove.length} old session records`);
       }
+    } catch (error) {
+      console.error('Error clearing old sessions:', error);
     }
   }
 }
-
-// Export singleton instance
-export default new BrowsingTracker();

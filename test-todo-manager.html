@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Todo Manager</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        .test-header {
+            background: #333;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .test-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .test-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        .iframe-container {
+            width: 100%;
+            height: calc(100vh - 100px);
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px 0;
+        }
+        iframe {
+            width: 100%;
+            max-width: 900px;
+            height: 100%;
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .test-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            font-size: 12px;
+            color: #666;
+        }
+        .test-info strong {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <h1>📋 Todo Manager Test Page</h1>
+        <p>Test the todo manager functionality outside of the Chrome extension</p>
+    </div>
+    
+    <div class="iframe-container">
+        <iframe src="popup/todo-manager.html"></iframe>
+    </div>
+    
+    <div class="test-info">
+        <strong>Test Features:</strong><br>
+        ✓ Add/Delete Goals<br>
+        ✓ Add/Complete Todos<br>
+        ✓ Time Tracking<br>
+        ✓ Progress Tracking<br>
+        ✓ Motivational Messages
+    </div>
+</body>
+</html>

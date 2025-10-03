@@ -85,6 +85,72 @@
             </div>
         </section>
 
+        <!-- Todo Manager Section -->
+        <section class="todo-manager-section" id="todoManagerSection">
+            <div class="section-header">
+                <h2>📋 My Goals & Todos</h2>
+                <button class="add-goal-btn" id="addGoalBtn">+ Goal</button>
+            </div>
+            
+            <!-- Quick Add Goal -->
+            <div class="quick-add-goal" id="quickAddGoal" style="display: none;">
+                <input type="text" id="goalInput" placeholder="Enter your goal..." class="goal-input">
+                <div class="goal-actions">
+                    <button class="btn-small btn-save" id="saveGoalBtn">Save</button>
+                    <button class="btn-small btn-cancel" id="cancelGoalBtn">Cancel</button>
+                </div>
+            </div>
+            
+            <!-- Goals List -->
+            <div class="goals-container" id="goalsContainer">
+                <!-- Goals will be dynamically added here -->
+            </div>
+            
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">🎯</div>
+                <p>No goals yet. Add your first goal to get started!</p>
+            </div>
+            
+            <!-- Todo Progress Summary -->
+            <div class="todo-summary" id="todoSummary" style="display: none;">
+                <div class="summary-stats">
+                    <div class="summary-stat">
+                        <span class="stat-number" id="totalTodos">0</span>
+                        <span class="stat-label">Total</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="stat-number" id="completedTodos">0</span>
+                        <span class="stat-label">Done</span>
+                    </div>
+                    <div class="summary-stat">
+                        <span class="stat-number" id="progressPercent">0%</span>
+                        <span class="stat-label">Progress</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- browser content analyst Section -->
+        <section class="ai-coach">
+            <div class="section-header">
+                <h2>browser content analyst</h2>
+                <span class="coach-status" id="coachStatus">Ready to help</span>
+            </div>
+            <div class="coach-content" id="coachContent">
+                <div class="coach-summary" id="coachSummary">
+                    <p>Your browser content analyst will summarize what you've been reading during focused sessions.</p>
+                    <small>Summaries appear after 5+ minutes of reading</small>
+                </div>
+                <div class="summary-list" id="summaryList" style="display: none;">
+                    <!-- Summaries will be added here -->
+                </div>
+            </div>
+            <button class="btn btn-secondary" id="askCoach">
+                Ask browser content analyst
+            </button>
+        </section>
+
         <!-- Action Buttons -->
         <section class="actions">
             <button class="btn btn-primary" id="viewAnalytics">
@@ -92,6 +158,9 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M5 12h14m-7-7l7 7-7 7"></path>
                 </svg>
+            </button>
+            <button class="btn btn-secondary" id="viewTodos">
+                <span>📋 My Goals & Todos</span>
             </button>
             <button class="btn btn-secondary" id="setIntention">
                 <span>Set Today's Intention</span>

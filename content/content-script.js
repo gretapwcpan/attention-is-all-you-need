@@ -45,14 +45,68 @@
     return info;
   }
   
-  // Send page info to background script when requested
-  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'getPageInfo') {
-      const pageInfo = extractPageInfo();
-      sendResponse(pageInfo);
+  // Extract detailed page content for character generation
+  function extractPageContent() {
+    // Get main content area
+    const article = document.querySelector('article, main, [role="main"], .content, #content');
+    const body = article || document.body;
+    
+    // Get all text content
+    let fullText = '';
+    const textElements = body.querySelectorAll('p, h1, h2, h3, h4, li, td, blockquote');
+    for (let element of textElements) {
+      const text = element.textContent.trim();
+      if (text) {
+        fullText += text + ' ';
+      }
+      // Limit to 5000 characters for AI processing
+      if (fullText.length > 5000) break;
     }
-    return true; // Keep message channel open
-  });
+    
+    // Get headings for better context
+    const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
+      .slice(0, 10)
+      .map(h => h.textContent.trim())
+      .filter(h => h.length > 0);
+    
+    return {
+      content: fullText.substring(0, 5000),
+      headings: headings,
+      title: document.title,
+      url: window.location.href,
+      domain: window.location.hostname,
+      description: document.querySelector('meta[name="description"]')?.content || '',
+      keywords: document.querySelector('meta[name="keywords"]')?.content || '',
+      author: document.querySelector('meta[name="author"]')?.content || ''
+    };
+  }
+  
+  // Send page info to background script when requested
+  // Check if chrome.runtime is available before adding listener
+  if (chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      // Verify extension context is still valid
+      if (!chrome.runtime.id) {
+        console.log('Extension context invalidated');
+        return false;
+      }
+      
+      try {
+        if (request.action === 'getPageInfo') {
+          const pageInfo = extractPageInfo();
+          sendResponse(pageInfo);
+        } else if (request.action === 'getPageContent') {
+          const pageContent = extractPageContent();
+          sendResponse(pageContent);
+        }
+      } catch (error) {
+        console.error('Error handling message:', error);
+        sendResponse({ error: error.message });
+      }
+      
+      return true; // Keep message channel open
+    });
+  }
   
   // Track user engagement
   let engagementData = {
@@ -82,17 +136,42 @@
   });
   
   // Send engagement data periodically
-  setInterval(() => {
+  let engagementInterval = setInterval(() => {
     if (engagementData.clicks > 0 || engagementData.keystrokes > 0 || engagementData.scrollDepth > 10) {
       try {
-        chrome.runtime.sendMessage({
-          action: 'updateEngagement',
-          data: engagementData
-        });
+        // Check if extension context is still valid
+        if (chrome.runtime && chrome.runtime.id) {
+          chrome.runtime.sendMessage({
+            action: 'updateEngagement',
+            data: engagementData
+          }, (response) => {
+            // Check for errors silently
+            if (chrome.runtime.lastError) {
+              // Expected when extension reloads - stop trying
+              clearInterval(engagementInterval);
+            }
+          });
+        } else {
+          // Extension context lost
+          clearInterval(engagementInterval);
+        }
       } catch (error) {
-        // Extension context invalidated, ignore
+        // Extension context invalidated, stop trying silently
+        clearInterval(engagementInterval);
       }
     }
   }, 30000); // Every 30 seconds
+  
+  // Clean up on page unload
+  window.addEventListener('beforeunload', () => {
+    clearInterval(engagementInterval);
+  });
+  
+  // Handle extension disconnect gracefully
+  if (chrome.runtime) {
+    chrome.runtime.onDisconnect?.addListener(() => {
+      clearInterval(engagementInterval);
+    });
+  }
   
 })();

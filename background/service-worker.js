@@ -1,9 +1,18 @@
 // Attention Analytics - Background Service Worker
 
+// Import AI and character modules
+import { getAIService } from '../utils/ai-service.js';
+import { getAISummarizer } from '../utils/ai-summarizer.js';
+
 // Current tab tracking
 let activeTab = null;
 let sessionStartTime = null;
 let sessionTimer = null;
+
+// Initialize AI and summarizer services
+let aiService = null;
+let aiSummarizer = null;
+let todoMapper = null;
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -12,10 +21,42 @@ chrome.runtime.onInstalled.addListener(async () => {
   // Initialize storage with default data
   await initializeStorage();
   
+  // Initialize AI services
+  await initializeAIServices();
+  
   // Set up alarms for periodic data processing
   chrome.alarms.create('processData', { periodInMinutes: 5 });
   chrome.alarms.create('dailyReset', { when: getNextMidnight() });
 });
+
+// Initialize AI services
+async function initializeAIServices() {
+  try {
+    aiService = getAIService();
+    aiSummarizer = getAISummarizer();
+    
+    // Initialize AI service
+    const aiAvailable = await aiService.initialize();
+    console.log('AI Service available:', aiAvailable);
+    
+    // Initialize summarizer
+    await aiSummarizer.initialize();
+    console.log('AI Summarizer initialized');
+    
+    // Initialize todo mapper for smart tracking
+    try {
+      // Dynamic import to avoid module issues
+      const TodoAIMapper = (await import('../utils/todo-ai-mapper.js')).default;
+      todoMapper = new TodoAIMapper();
+      console.log('Todo AI Mapper initialized');
+    } catch (err) {
+      console.log('Todo mapper not available:', err);
+    }
+    
+  } catch (error) {
+    console.error('Error initializing AI services:', error);
+  }
+}
 
 // Initialize storage
 async function initializeStorage() {
@@ -111,9 +152,9 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   } else {
     // Browser gained focus - resume tracking
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab && tab.url) {
-        startSession(tab);
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs && tabs.length > 0 && tabs[0].url) {
+        startSession(tabs[0]);
       }
     } catch (error) {
       console.error('Error querying tabs:', error);
@@ -142,8 +183,8 @@ function startSession(tab) {
     sessionTimer = setInterval(async () => {
       // Check if tab is still active
       try {
-        const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (currentTab && activeTab && currentTab.id !== activeTab.id) {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tabs && tabs.length > 0 && activeTab && tabs[0].id !== activeTab.id) {
           await endSession();
         }
       } catch (error) {
@@ -179,12 +220,88 @@ async function endSession() {
     
     // Update today's analytics
     await updateAnalytics(session);
+    
+    // Try to generate a summary for this session
+    await tryGenerateSummary(session);
   }
   
   // Clear session data
   clearInterval(sessionTimer);
   activeTab = null;
   sessionStartTime = null;
+}
+
+// Try to generate a summary for the session
+async function tryGenerateSummary(session) {
+  try {
+    if (!aiSummarizer) return;
+    
+    // Get page content if available
+    const pageData = {
+      url: session.url,
+      title: session.title,
+      domain: session.domain,
+      category: session.category,
+      timeSpent: session.duration,
+      content: '' // Will be filled by content script
+    };
+    
+    // Send page data to todo mapper for smart tracking
+    if (todoMapper && activeTab) {
+      chrome.runtime.sendMessage({
+        action: 'pageContent',
+        data: pageData
+      }).catch(() => {
+        // Ignore if todo mapper is not ready
+      });
+    }
+    
+    // Try to get content from the active tab
+    if (activeTab && activeTab.id) {
+      try {
+        const response = await chrome.tabs.sendMessage(activeTab.id, { 
+          action: 'getPageContent' 
+        });
+        if (response && response.content) {
+          pageData.content = response.content;
+        }
+      } catch (error) {
+        console.log('Could not get page content:', error);
+      }
+    }
+    
+    // Check if we should summarize this page
+    if (!aiSummarizer.shouldSummarize(pageData)) {
+      return;
+    }
+    
+    // Generate summary
+    const summary = await aiSummarizer.summarizePage(pageData);
+    
+    // Save summary to storage
+    const summaries = await getFromStorage('readingSummaries') || [];
+    summaries.unshift(summary);
+    
+    // Keep only last 20 summaries
+    if (summaries.length > 20) {
+      summaries.pop();
+    }
+    
+    await setInStorage('readingSummaries', summaries);
+    
+    // Notify popup if open
+    chrome.runtime.sendMessage({
+      action: 'summaryGenerated',
+      summary: summary
+    }).catch(() => {
+      // Popup might not be open, ignore error
+    });
+    
+    console.log('Summary generated for:', session.title);
+    
+  } catch (error) {
+    console.error('Error generating summary:', error);
+  }
 }
 
 // Categorize URL
@@ -369,6 +486,26 @@ async function handleMessage(request, sender, sendResponse) {
       case 'getIntention':
         const intention = await getFromStorage('todayIntention');
         sendResponse({ success: true, data: intention });
+        break;
+        
+      case 'getTodoProgress':
+        // Get todo progress summary
+        if (todoMapper) {
+          const progress = await todoMapper.getProgressSummary();
+          sendResponse({ success: true, data: progress });
+        } else {
+          sendResponse({ success: false, error: 'Todo mapper not initialized' });
+        }
+        break;
+        
+      case 'suggestTodos':
+        // Suggest relevant todos based on current page
+        if (todoMapper && request.url && request.title) {
+          const suggestions = await todoMapper.suggestRelevantTodos(request.url, request.title);
+          sendResponse({ success: true, data: suggestions });
+        } else {
+          sendResponse({ success: false, error: 'Missing data or mapper not initialized' });
+        }
         break;
         
       case 'exportData':

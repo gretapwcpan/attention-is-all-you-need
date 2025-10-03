@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo Manager - You Are What You Read</title>
+    <link rel="stylesheet" href="todo-manager.css">
+</head>
+<body>
+    <div class="todo-container">
+        <!-- Header with Progress -->
+        <div class="todo-header">
+            <h1>📋 My Goals & Todos</h1>
+            <div class="progress-summary">
+                <div class="progress-stat">
+                    <span class="stat-label">Today's Progress</span>
+                    <span class="stat-value" id="todayProgress">0%</span>
+                </div>
+                <div class="progress-stat">
+                    <span class="stat-label">Streak</span>
+                    <span class="stat-value" id="streak">0 days</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Motivational Message -->
+        <div class="motivational-message" id="motivationalMessage">
+            <!-- Dynamic messages will appear here -->
+        </div>
+
+        <!-- Add Goal Section -->
+        <div class="add-goal-section">
+            <input type="text" id="newGoalInput" placeholder="Add a new goal (e.g., Learn React)">
+            <button id="addGoalBtn" class="btn-primary">+ Add Goal</button>
+        </div>
+
+        <!-- Goals List -->
+        <div class="goals-list" id="goalsList">
+            <!-- Goals will be dynamically added here -->
+        </div>
+
+        <!-- Goal Template (hidden) -->
+        <template id="goalTemplate">
+            <div class="goal-item" data-goal-id="">
+                <div class="goal-header">
+                    <div class="goal-title-section">
+                        <span class="goal-expand-icon">▶</span>
+                        <h3 class="goal-title"></h3>
+                        <span class="goal-progress"></span>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="btn-icon delete-goal" title="Delete Goal">🗑️</button>
+                    </div>
+                </div>
+                <div class="goal-content" style="display: none;">
+                    <div class="add-todo-section">
+                        <input type="text" class="new-todo-input" placeholder="Add a todo for this goal">
+                        <input type="number" class="todo-time-estimate" placeholder="Est. mins" min="1" max="999">
+                        <button class="btn-add-todo">+ Add Todo</button>
+                    </div>
+                    <div class="todos-list">
+                        <!-- Todos will be added here -->
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- Todo Template (hidden) -->
+        <template id="todoTemplate">
+            <div class="todo-item" data-todo-id="">
+                <div class="todo-main">
+                    <input type="checkbox" class="todo-checkbox">
+                    <span class="todo-title"></span>
+                    <div class="todo-meta">
+                        <span class="todo-time-estimate"></span>
+                        <span class="todo-time-actual" style="display: none;"></span>
+                    </div>
+                </div>
+                <div class="todo-actions">
+                    <button class="btn-icon start-timer" title="Start Timer">⏱️</button>
+                    <button class="btn-icon delete-todo" title="Delete Todo">❌</button>
+                </div>
+                <div class="todo-timer" style="display: none;">
+                    <span class="timer-display">00:00</span>
+                    <button class="btn-stop-timer">Stop</button>
+                </div>
+            </div>
+        </template>
+
+        <!-- Footer Actions -->
+        <div class="todo-footer">
+            <button id="viewAnalyticsBtn" class="btn-secondary">📊 View Analytics</button>
+            <button id="clearCompletedBtn" class="btn-secondary">Clear Completed</button>
+        </div>
+    </div>
+
+    <script src="todo-manager.js"></script>
+</body>
+</html>

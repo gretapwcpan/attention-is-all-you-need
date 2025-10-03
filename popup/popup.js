@@ -33,7 +33,13 @@ const elements = {
   // Buttons
   settingsBtn: document.getElementById('settingsBtn'),
   viewAnalytics: document.getElementById('viewAnalytics'),
-  setIntention: document.getElementById('setIntention')
+  setIntention: document.getElementById('setIntention'),
+  
+  // browser content analyst
+  coachStatus: document.getElementById('coachStatus'),
+  coachSummary: document.getElementById('coachSummary'),
+  summaryList: document.getElementById('summaryList'),
+  askCoach: document.getElementById('askCoach')
 };
 
 // State
@@ -53,10 +59,322 @@ let todayData = {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadCurrentSession();
   await loadTodayData();
+  await loadAISummaries();
+  await loadTodos();
   updateUI();
   startTimer();
   setupEventListeners();
+  setupTodoManager();
 });
+
+// Load AI-generated summaries
+async function loadAISummaries() {
+  try {
+    // Get recent reading sessions from storage
+    const summaries = await chrome.storage.local.get('readingSummaries');
+    
+    if (summaries.readingSummaries && summaries.readingSummaries.length > 0) {
+      // Update coach status
+      elements.coachStatus.textContent = `${summaries.readingSummaries.length} summaries available`;
+      
+      // Hide default message and show summaries
+      elements.coachSummary.style.display = 'none';
+      elements.summaryList.style.display = 'flex';
+      
+      // Display summaries
+      displaySummaries(summaries.readingSummaries.slice(0, 3));
+    } else {
+      // Show default message
+      elements.coachStatus.textContent = 'Ready to help';
+      elements.coachSummary.style.display = 'block';
+      elements.summaryList.style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Error loading summaries:', error);
+    elements.coachStatus.textContent = 'Ready to help';
+  }
+}
+
+// Display reading summaries
+function displaySummaries(summaries) {
+  elements.summaryList.innerHTML = '';
+  
+  summaries.forEach(summary => {
+    const item = document.createElement('div');
+    item.className = 'summary-item';
+    
+    const title = document.createElement('div');
+    title.className = 'summary-title';
+    title.textContent = summary.title || 'Reading Summary';
+    
+    const text = document.createElement('div');
+    text.className = 'summary-text';
+    text.textContent = summary.text || 'Summary of your recent reading session...';
+    
+    const time = document.createElement('div');
+    time.className = 'summary-time';
+    time.textContent = formatTimeAgo(summary.timestamp);
+    
+    item.appendChild(title);
+    item.appendChild(text);
+    item.appendChild(time);
+    
+    elements.summaryList.appendChild(item);
+  });
+}
+
+// Format time ago
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return 'Recently';
+  
+  const now = Date.now();
+  const diff = now - timestamp;
+  const minutes = Math.floor(diff / 60000);
+  
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
+
+// Ask browser content analyst for help - opens dialog window
+async function askAICoach() {
+  // Open the coach dialog in a new window
+  chrome.windows.create({
+    url: chrome.runtime.getURL('popup/coach-dialog.html'),
+    type: 'popup',
+    width: 500,
+    height: 600,
+    left: Math.round((screen.width - 500) / 2),
+    top: Math.round((screen.height - 600) / 2)
+  });
+}
+
+// Todo Manager State
+let todos = {
+  goals: [],
+  lastUpdated: null
+};
+
+// Load todos from storage
+async function loadTodos() {
+  try {
+    const stored = await chrome.storage.local.get('todoData');
+    if (stored.todoData) {
+      todos = stored.todoData;
+      renderTodos();
+      updateTodoSummary();
+    } else {
+      // Show empty state
+      document.getElementById('emptyState').style.display = 'block';
+      document.getElementById('goalsContainer').style.display = 'none';
+    }
+  } catch (error) {
+    console.error('Error loading todos:', error);
+  }
+}
+
+// Save todos to storage
+async function saveTodos() {
+  try {
+    todos.lastUpdated = new Date().toISOString();
+    await chrome.storage.local.set({ todoData: todos });
+    await chrome.storage.sync.set({ todoData: todos });
+  } catch (error) {
+    console.error('Error saving todos:', error);
+  }
+}
+
+// Setup todo manager event listeners
+function setupTodoManager() {
+  const addGoalBtn = document.getElementById('addGoalBtn');
+  const saveGoalBtn = document.getElementById('saveGoalBtn');
+  const cancelGoalBtn = document.getElementById('cancelGoalBtn');
+  const goalInput = document.getElementById('goalInput');
+  
+  // Add goal button
+  addGoalBtn.addEventListener('click', () => {
+    document.getElementById('quickAddGoal').style.display = 'block';
+    goalInput.focus();
+  });
+  
+  // Save goal
+  saveGoalBtn.addEventListener('click', () => {
+    const goalTitle = goalInput.value.trim();
+    if (goalTitle) {
+      addGoal(goalTitle);
+      goalInput.value = '';
+      document.getElementById('quickAddGoal').style.display = 'none';
+    }
+  });
+  
+  // Cancel goal
+  cancelGoalBtn.addEventListener('click', () => {
+    goalInput.value = '';
+    document.getElementById('quickAddGoal').style.display = 'none';
+  });
+  
+  // Enter key to save goal
+  goalInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      saveGoalBtn.click();
+    }
+  });
+}
+
+// Add a new goal
+function addGoal(title) {
+  const goal = {
+    id: Date.now().toString(),
+    title: title,
+    todos: [],
+    createdAt: new Date().toISOString(),
+    progress: 0
+  };
+  
+  todos.goals.push(goal);
+  saveTodos();
+  renderTodos();
+  updateTodoSummary();
+}
+
+// Add a todo to a goal
+function addTodo(goalId) {
+  const todoTitle = prompt('Enter todo:');
+  if (!todoTitle) return;
+  
+  const estimatedTime = parseInt(prompt('Estimated time (minutes):', '30')) || 30;
+  
+  const goal = todos.goals.find(g => g.id === goalId);
+  if (goal) {
+    const todo = {
+      id: Date.now().toString(),
+      title: todoTitle,
+      estimatedTime: estimatedTime,
+      actualTime: 0,
+      completed: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    goal.todos.push(todo);
+    saveTodos();
+    renderTodos();
+    updateTodoSummary();
+  }
+}
+
+// Toggle todo completion
+function toggleTodo(goalId, todoId) {
+  const goal = todos.goals.find(g => g.id === goalId);
+  if (goal) {
+    const todo = goal.todos.find(t => t.id === todoId);
+    if (todo) {
+      todo.completed = !todo.completed;
+      if (todo.completed) {
+        todo.completedAt = new Date().toISOString();
+      }
+      
+      // Update goal progress
+      const completedCount = goal.todos.filter(t => t.completed).length;
+      goal.progress = goal.todos.length > 0 
+        ? Math.round((completedCount / goal.todos.length) * 100)
+        : 0;
+      
+      saveTodos();
+      renderTodos();
+      updateTodoSummary();
+    }
+  }
+}
+
+// Render todos in the UI
+function renderTodos() {
+  const container = document.getElementById('goalsContainer');
+  const emptyState = document.getElementById('emptyState');
+  
+  if (todos.goals.length === 0) {
+    container.style.display = 'none';
+    emptyState.style.display = 'block';
+    return;
+  }
+  
+  container.style.display = 'block';
+  emptyState.style.display = 'none';
+  container.innerHTML = '';
+  
+  todos.goals.forEach(goal => {
+    const goalEl = document.createElement('div');
+    goalEl.className = 'goal-item';
+    
+    const completedCount = goal.todos.filter(t => t.completed).length;
+    const totalCount = goal.todos.length;
+    const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    
+    goalEl.innerHTML = `
+      <div class="goal-header">
+        <div class="goal-title">
+          <span>${goal.title}</span>
+        </div>
+        <div class="goal-progress">${progress}%</div>
+      </div>
+      <div class="goal-todos">
+        ${goal.todos.map(todo => `
+          <div class="todo-item">
+            <div class="todo-checkbox ${todo.completed ? 'checked' : ''}" 
+                 data-goal-id="${goal.id}" 
+                 data-todo-id="${todo.id}"></div>
+            <span class="todo-text ${todo.completed ? 'completed' : ''}">${todo.title}</span>
+            <span class="todo-time">${todo.estimatedTime}m</span>
+          </div>
+        `).join('')}
+        <button class="add-todo-btn" data-goal-id="${goal.id}">+ Add todo</button>
+      </div>
+    `;
+    
+    container.appendChild(goalEl);
+  });
+  
+  // Add event listeners to checkboxes and buttons
+  container.querySelectorAll('.todo-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('click', (e) => {
+      const goalId = e.target.dataset.goalId;
+      const todoId = e.target.dataset.todoId;
+      toggleTodo(goalId, todoId);
+    });
+  });
+  
+  container.querySelectorAll('.add-todo-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const goalId = e.target.dataset.goalId;
+      addTodo(goalId);
+    });
+  });
+}
+
+// Update todo summary
+function updateTodoSummary() {
+  let totalTodos = 0;
+  let completedTodos = 0;
+  
+  todos.goals.forEach(goal => {
+    totalTodos += goal.todos.length;
+    completedTodos += goal.todos.filter(t => t.completed).length;
+  });
+  
+  if (totalTodos > 0) {
+    document.getElementById('todoSummary').style.display = 'block';
+    document.getElementById('totalTodos').textContent = totalTodos;
+    document.getElementById('completedTodos').textContent = completedTodos;
+    document.getElementById('progressPercent').textContent = 
+      Math.round((completedTodos / totalTodos) * 100) + '%';
+  } else {
+    document.getElementById('todoSummary').style.display = 'none';
+  }
+}
 
 // Load current browsing session
 async function loadCurrentSession() {
@@ -323,6 +641,12 @@ function setupEventListeners() {
     chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
   });
   
+  // Remove the separate todo manager button since it's now embedded
+  const viewTodosBtn = document.getElementById('viewTodos');
+  if (viewTodosBtn) {
+    viewTodosBtn.style.display = 'none';
+  }
+  
   elements.setIntention.addEventListener('click', () => {
     // TODO: Implement intention setting
     alert('Intention setting coming soon!');
@@ -331,6 +655,11 @@ function setupEventListeners() {
   elements.settingsBtn.addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('settings/settings.html') });
   });
+  
+  // browser content analyst button
+  if (elements.askCoach) {
+    elements.askCoach.addEventListener('click', askAICoach);
+  }
 }
 
 // Utility functions

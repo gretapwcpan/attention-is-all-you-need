@@ -477,3 +477,327 @@ body {
     background: #E0E0E0;
   }
 }
+
+/* Todo Manager Section */
+.todo-manager-section {
+  padding: var(--spacing-lg);
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-light);
+}
+
+.todo-manager-section .section-header {
+  margin-bottom: var(--spacing-md);
+}
+
+.add-goal-btn {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.add-goal-btn:hover {
+  background: #0052CC;
+  transform: translateY(-1px);
+}
+
+/* Quick Add Goal */
+.quick-add-goal {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.goal-input {
+  width: 100%;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: var(--spacing-sm);
+  background: var(--bg-primary);
+  color: var(--primary);
+}
+
+.goal-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-save {
+  background: var(--success);
+  color: white;
+}
+
+.btn-save:hover {
+  background: #00A843;
+}
+
+.btn-cancel {
+  background: var(--bg-tertiary);
+  color: var(--secondary);
+}
+
+.btn-cancel:hover {
+  background: var(--border-light);
+}
+
+/* Goals Container */
+.goals-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.goal-item {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-light);
+  transition: all var(--transition-fast);
+}
+
+.goal-item:hover {
+  border-color: var(--accent);
+}
+
+.goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  cursor: pointer;
+}
+
+.goal-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.goal-progress {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.goal-todos {
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-light);
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  font-size: 13px;
+  color: var(--secondary);
+}
+
+.todo-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-medium);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.todo-checkbox.checked {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.todo-checkbox.checked::after {
+  content: '✓';
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.todo-text {
+  flex: 1;
+}
+
+.todo-text.completed {
+  text-decoration: line-through;
+  color: var(--tertiary);
+}
+
+.todo-time {
+  font-size: 11px;
+  color: var(--tertiary);
+  font-family: var(--font-mono);
+}
+
+.add-todo-btn {
+  margin-top: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border-light);
+  border-radius: 4px;
+  color: var(--secondary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.add-todo-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--secondary);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: var(--spacing-md);
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: var(--secondary);
+}
+
+/* Todo Summary */
+.todo-summary {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+}
+
+.summary-stats {
+  display: flex;
+  justify-content: space-around;
+  gap: var(--spacing-md);
+}
+
+.summary-stat {
+  text-align: center;
+}
+
+.stat-number {
+  display: block;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--primary);
+  font-family: var(--font-mono);
+  margin-bottom: var(--spacing-xs);
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* browser content analyst Section */
+.ai-coach {
+  padding: var(--spacing-lg);
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-light);
+}
+
+.ai-coach .section-header {
+  margin-bottom: var(--spacing-md);
+}
+
+.coach-status {
+  font-size: 12px;
+  color: var(--success);
+  font-weight: 500;
+}
+
+.coach-content {
+  margin-bottom: var(--spacing-md);
+}
+
+.coach-summary {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.coach-summary p {
+  font-size: 14px;
+  color: var(--primary);
+  margin-bottom: var(--spacing-xs);
+  line-height: 1.5;
+}
+
+.coach-summary small {
+  font-size: 12px;
+  color: var(--secondary);
+}
+
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.summary-item {
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.summary-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.summary-text {
+  font-size: 12px;
+  color: var(--secondary);
+  line-height: 1.5;
+}
+
+.summary-time {
+  font-size: 11px;
+  color: var(--tertiary);
+  margin-top: var(--spacing-xs);
+}
