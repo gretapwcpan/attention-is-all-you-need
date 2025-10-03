@@ -31,6 +31,7 @@ async function loadAnalytics() {
       updateTopSites(data);
       updateRecentSessions(data);
       updateInsights(data);
+      updateFocusDistribution(data);
     }
     
     // Get week data for charts
@@ -104,13 +105,24 @@ function updateTopSites(data) {
     .slice(0, 10);
   
   // Render list
-  elements.topSites.innerHTML = topSites.map(site => `
-    <div class="list-item">
-      <span class="list-item-title">${site.domain}</span>
-      <span class="list-item-category category-${site.category.toLowerCase()}">${site.category}</span>
-      <span class="list-item-value">${formatTime(site.time)}</span>
-    </div>
-  `).join('');
+  elements.topSites.innerHTML = topSites.map(site => {
+    // Determine dominant focus type for this site
+    const siteSessions = data.sessions.filter(s => s.domain === site.domain);
+    const focusTypes = { deep: 0, active: 0, scanning: 0 };
+    siteSessions.forEach(s => {
+      if (s.focusType) focusTypes[s.focusType] = (focusTypes[s.focusType] || 0) + 1;
+    });
+    const dominantFocus = Object.entries(focusTypes).sort((a, b) => b[1] - a[1])[0][0];
+    
+    return `
+      <div class="list-item">
+        <span class="list-item-title">${site.domain}</span>
+        <span class="focus-badge focus-${dominantFocus}">[${dominantFocus.toUpperCase()}]</span>
+        <span class="list-item-category category-${site.category.toLowerCase()}">${site.category}</span>
+        <span class="list-item-value">${formatTime(site.time)}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 // Update recent sessions
@@ -124,13 +136,19 @@ function updateRecentSessions(data) {
   const recentSessions = data.sessions.slice(-20).reverse();
   
   // Render list
-  elements.recentSessions.innerHTML = recentSessions.map(session => `
-    <div class="list-item">
-      <span class="list-item-title">${truncateText(session.title, 50)}</span>
-      <span class="list-item-category category-${session.category.toLowerCase()}">${session.category}</span>
-      <span class="list-item-value">${formatTime(session.duration)}</span>
-    </div>
-  `).join('');
+  elements.recentSessions.innerHTML = recentSessions.map(session => {
+    const focusType = session.focusType || 'scanning';
+    const focusLabel = focusType === 'scanning' ? 'SCAN' : focusType.toUpperCase();
+    
+    return `
+      <div class="list-item">
+        <span class="list-item-title">${truncateText(session.title, 50)}</span>
+        <span class="focus-badge focus-${focusType}">[${focusLabel}]</span>
+        <span class="list-item-category category-${session.category.toLowerCase()}">${session.category}</span>
+        <span class="list-item-value">${formatTime(session.duration)}</span>
+      </div>
+    `;
+  }).join('');
 }
 
 // Update insights
@@ -210,6 +228,34 @@ function generateInsights(data) {
   }
   
   return insights;
+}
+
+// Update focus distribution bars
+function updateFocusDistribution(data) {
+  const deepTime = data.deepFocusTime || 0;
+  const activeTime = data.activeReadingTime || 0;
+  const scanTime = data.scanningTime || 0;
+  const totalFocusTime = deepTime + activeTime + scanTime;
+  
+  // Update bar widths
+  const deepBar = document.getElementById('deepBar');
+  const activeBar = document.getElementById('activeBar');
+  const scanBar = document.getElementById('scanBar');
+  
+  if (totalFocusTime > 0) {
+    deepBar.style.width = `${(deepTime / totalFocusTime) * 100}%`;
+    activeBar.style.width = `${(activeTime / totalFocusTime) * 100}%`;
+    scanBar.style.width = `${(scanTime / totalFocusTime) * 100}%`;
+  } else {
+    deepBar.style.width = '0%';
+    activeBar.style.width = '0%';
+    scanBar.style.width = '0%';
+  }
+  
+  // Update values
+  document.getElementById('deepValue').textContent = formatTime(deepTime);
+  document.getElementById('activeValue').textContent = formatTime(activeTime);
+  document.getElementById('scanValue').textContent = formatTime(scanTime);
 }
 
 // Draw charts

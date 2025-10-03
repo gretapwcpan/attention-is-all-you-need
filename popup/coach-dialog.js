@@ -54,26 +54,26 @@ function initializeChat() {
   const greeting = getGreeting();
   addMessage(greeting, 'coach');
   conversationContext.push({ role: 'assistant', content: greeting });
-  updateStatus('Ready to help');
+  updateStatus('Neural link established');
 }
 
 // Get personalized greeting based on reading data
 function getGreeting() {
   const hour = new Date().getHours();
-  let timeGreeting = hour < 12 ? 'Good morning!' : hour < 18 ? 'Good afternoon!' : 'Good evening!';
+  let timePrefix = hour < 12 ? '[MORNING PROTOCOL]' : hour < 18 ? '[DAY PROTOCOL]' : '[NIGHT PROTOCOL]';
   
   if (!sessions || sessions.length === 0) {
-    return `${timeGreeting} I'm your browser content analyst. I'll help you understand and remember what you read. Start browsing to begin!`;
+    return `${timePrefix} Neural Coach online. No data streams detected. Initialize browsing sequence to begin cognitive analysis.`;
   }
   
   const recentPages = sessions.slice(-3).map(s => s.title);
   const totalMinutes = Math.floor(todayData.totalTime / 60000);
   
   if (recentPages.length > 0) {
-    return `${timeGreeting} I see you've been reading about "${truncateTitle(recentPages[0])}" and more. You've spent ${totalMinutes} minutes reading today. How can I help you understand what you've learned?`;
+    return `${timePrefix} Data stream detected: "${truncateTitle(recentPages[0])}" [+${recentPages.length-1} more]. Session duration: ${totalMinutes} minutes. Ready for cognitive synthesis.`;
   }
   
-  return `${timeGreeting} You've spent ${totalMinutes} minutes reading today. Let me help you review what you've learned!`;
+  return `${timePrefix} Session active for ${totalMinutes} minutes. Neural patterns recorded. Awaiting query input.`;
 }
 
 // Setup event listeners
@@ -108,6 +108,7 @@ async function handleUserMessage() {
   
   // Show typing indicator
   showTyping();
+  updateStatus('Processing neural pathways...');
   
   // Generate response
   try {
@@ -255,30 +256,33 @@ function buildReadingContext() {
 // Generate daily summary
 async function generateDailySummary() {
   showTyping();
+  updateStatus('Processing data streams...');
   
   setTimeout(() => {
     hideTyping();
     
     if (!sessions || sessions.length === 0) {
-      const message = "No reading sessions yet today. Start exploring and I'll help you track your learning!";
+      const message = "[NO DATA] Neural pathways empty. Initialize browsing protocol to begin data collection.";
       addMessage(message, 'coach');
       conversationContext.push({ role: 'assistant', content: message });
+      updateStatus('Awaiting input');
       return;
     }
     
     const totalMinutes = Math.floor(todayData.totalTime / 60000);
     const uniqueTitles = [...new Set(sessions.map(s => s.title))];
-    const topPages = uniqueTitles.slice(0, 5).map(t => `• "${truncateTitle(t)}"`).join('\n');
+    const topPages = uniqueTitles.slice(0, 5).map(t => `> ${truncateTitle(t)}`).join('\n');
     
-    const summary = `📊 Today's Reading Summary:\n\n` +
-      `Time spent: ${totalMinutes} minutes\n` +
-      `Pages visited: ${sessions.length}\n` +
-      `Unique articles: ${uniqueTitles.length}\n\n` +
-      `Top pages you read:\n${topPages}\n\n` +
-      `Keep up the great learning!`;
+    const summary = `[DATA SYNTHESIS COMPLETE]\n\n` +
+      `SESSION_DURATION: ${totalMinutes} minutes\n` +
+      `NODES_ACCESSED: ${sessions.length}\n` +
+      `UNIQUE_STREAMS: ${uniqueTitles.length}\n\n` +
+      `[TOP NEURAL PATHWAYS]\n${topPages}\n\n` +
+      `[END TRANSMISSION]`;
     
     addMessage(summary, 'coach');
     conversationContext.push({ role: 'assistant', content: summary });
+    updateStatus('Analysis complete');
   }, 1500);
 }
 
@@ -315,15 +319,17 @@ Format as a numbered list.`;
     }
     
     hideTyping();
-    const message = `🔍 Your Reading Insights:\n\n${insights}`;
+    updateStatus('Analysis complete');
+    const message = `[COGNITIVE ANALYSIS]\n\n${insights}`;
     addMessage(message, 'coach');
     conversationContext.push({ role: 'assistant', content: message });
     
   } catch (error) {
     console.error('Error generating insights:', error);
     hideTyping();
+    updateStatus('Analysis complete');
     const fallbackInsights = generateFallbackInsights();
-    const message = `🔍 Your Reading Insights:\n\n${fallbackInsights}`;
+    const message = `[COGNITIVE ANALYSIS]\n\n${fallbackInsights}`;
     addMessage(message, 'coach');
     conversationContext.push({ role: 'assistant', content: message });
   }
@@ -332,7 +338,7 @@ Format as a numbered list.`;
 // Generate fallback insights when AI is not available
 function generateFallbackInsights() {
   if (!todayData || todayData.totalTime === 0) {
-    return "No reading data yet. Start browsing to get personalized insights!";
+    return "[NO DATA] Neural network requires input. Initialize browsing sequence.";
   }
   
   const insights = [];
@@ -340,25 +346,25 @@ function generateFallbackInsights() {
   // Focus quality insight
   const deepPercent = Math.round((todayData.deepFocusTime / todayData.totalTime) * 100);
   if (deepPercent > 50) {
-    insights.push("🎯 Excellent focus! Over half your time was in deep concentration.");
+    insights.push("[FOCUS_OPTIMAL] Neural engagement exceeds 50% threshold. Deep learning patterns detected.");
   } else if (deepPercent > 25) {
-    insights.push("📖 Good reading habits. Try longer sessions for deeper understanding.");
+    insights.push("[FOCUS_MODERATE] Neural patterns stable. Recommend extended sessions for enhanced synthesis.");
   } else {
-    insights.push("⚡ Quick scanning mode. Consider slowing down on important articles.");
+    insights.push("[FOCUS_SCATTERED] Rapid context switching detected. Optimize for sustained engagement.");
   }
   
   // Category insight
   const topCategory = Object.entries(todayData.categories || {})
     .sort((a, b) => b[1] - a[1])[0];
   if (topCategory) {
-    insights.push(`📚 Main focus area: ${topCategory[0]}`);
+    insights.push(`[PRIMARY_DOMAIN] ${topCategory[0]} - Maximum neural allocation`);
   }
   
   // Specific page insights
   if (sessions.length > 0) {
     const longSessions = sessions.filter(s => s.duration > 300000); // 5+ minutes
     if (longSessions.length > 0) {
-      insights.push(`💡 Deep dive: You spent quality time on "${truncateTitle(longSessions[0].title)}"`);
+      insights.push(`[DEEP_DIVE] Extended neural engagement: "${truncateTitle(longSessions[0].title)}"`);
     }
   }
   
@@ -411,7 +417,13 @@ function hideTyping() {
 
 // Update status
 function updateStatus(status) {
-  document.getElementById('coachStatus').textContent = status;
+  const statusElement = document.getElementById('coachStatus');
+  statusElement.textContent = status;
+  // Add a flicker effect when status changes
+  statusElement.style.animation = 'none';
+  setTimeout(() => {
+    statusElement.style.animation = 'blink 1s step-end 2';
+  }, 10);
 }
 
 // Truncate long titles

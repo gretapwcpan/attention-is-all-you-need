@@ -1,4 +1,4 @@
-// Attention Analytics - Content Script
+// Attention Is All You Need - Content Script
 // Extracts additional information from web pages
 
 (function() {

@@ -3,185 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attention Analytics</title>
+    <title>Attention Is All You Need - Neural Tracker</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1 class="logo">Attention Analytics</h1>
-            <button class="settings-btn" id="settingsBtn" aria-label="Settings">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M20.46 20.46l-4.24-4.24M1.54 20.46l4.24-4.24M23 12h-6m-6 0H1"></path>
-                </svg>
-            </button>
+            <h1>NEURAL TRACKER</h1>
+            <p class="tagline">Cognitive Analytics System</p>
         </header>
 
-        <!-- Current Focus Section -->
-        <section class="current-focus">
-            <div class="focus-label">CURRENT FOCUS</div>
-            <div class="focus-content">
-                <div class="focus-category" id="currentCategory">Loading...</div>
-                <div class="focus-title" id="currentTitle">Initializing tracker...</div>
-                <div class="focus-timer">
-                    <span id="focusTime">0</span>
-                    <span class="timer-unit">min</span>
-                    <span class="focus-quality" id="focusQuality">• Deep Focus</span>
-                </div>
-            </div>
-            <div class="focus-bar">
-                <div class="focus-progress" id="focusProgress"></div>
-            </div>
+        <!-- Intention Section -->
+        <section class="intention-section">
+            <div class="intention-label">[MISSION OBJECTIVE]</div>
+            <input type="text" id="intentionInput" placeholder="Enter today's mission..." style="display: none;">
+            <div id="intentionDisplay" style="display: none;"></div>
         </section>
 
-        <!-- Today's Pattern Section -->
-        <section class="today-pattern">
-            <div class="section-header">
-                <h2>Today's Pattern</h2>
-                <span class="total-time" id="totalTime">0h 0m</span>
-            </div>
-            
-            <div class="pattern-chart" id="patternChart">
-                <div class="chart-bars">
-                    <!-- Dynamically generated bars -->
-                </div>
-                <div class="chart-legend" id="chartLegend">
-                    <!-- Dynamically generated legend -->
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">TIME ONLINE</div>
+                <div class="stat-value">
+                    <span id="totalTimeValue">0</span>
+                    <span class="stat-unit">min</span>
                 </div>
             </div>
-
-            <div class="attention-breakdown">
-                <div class="breakdown-item">
-                    <span class="breakdown-label">Deep Focus</span>
-                    <div class="breakdown-bar">
-                        <div class="breakdown-fill deep-focus" id="deepFocusBar"></div>
-                    </div>
-                    <span class="breakdown-value" id="deepFocusTime">0m</span>
+            <div class="stat-card">
+                <div class="stat-label">FOCUS LEVEL</div>
+                <div class="stat-value">
+                    <span id="focusScore">--</span>
+                    <span class="stat-unit">%</span>
                 </div>
-                <div class="breakdown-item">
-                    <span class="breakdown-label">Active Reading</span>
-                    <div class="breakdown-bar">
-                        <div class="breakdown-fill active-reading" id="activeReadingBar"></div>
-                    </div>
-                    <span class="breakdown-value" id="activeReadingTime">0m</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">NODES</div>
+                <div class="stat-value">
+                    <span id="sitesCount">0</span>
                 </div>
-                <div class="breakdown-item">
-                    <span class="breakdown-label">Scanning</span>
-                    <div class="breakdown-bar">
-                        <div class="breakdown-fill scanning" id="scanningBar"></div>
-                    </div>
-                    <span class="breakdown-value" id="scanningTime">0m</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">TOPICS</div>
+                <div class="stat-value">
+                    <span id="topicsCount">0</span>
                 </div>
             </div>
         </section>
 
-        <!-- Quick Insight Section -->
-        <section class="quick-insight">
-            <div class="insight-icon">💡</div>
-            <div class="insight-content">
-                <p id="insightText">Start browsing to see your attention patterns</p>
-            </div>
-        </section>
-
-        <!-- Todo Manager Section -->
-        <section class="todo-manager-section" id="todoManagerSection">
-            <div class="section-header">
-                <h2>📋 My Goals & Todos</h2>
-                <button class="add-goal-btn" id="addGoalBtn">+ Goal</button>
-            </div>
-            
-            <!-- Quick Add Goal -->
-            <div class="quick-add-goal" id="quickAddGoal" style="display: none;">
-                <input type="text" id="goalInput" placeholder="Enter your goal..." class="goal-input">
-                <div class="goal-actions">
-                    <button class="btn-small btn-save" id="saveGoalBtn">Save</button>
-                    <button class="btn-small btn-cancel" id="cancelGoalBtn">Cancel</button>
+        <!-- Focus State Display -->
+        <section class="focus-state-section">
+            <div class="focus-state-label">MIND STATE</div>
+            <div class="focus-state-display">
+                <div class="focus-indicator" id="currentFocus">
+                    <span class="focus-badge-large" id="focusBadge">[IDLE]</span>
                 </div>
-            </div>
-            
-            <!-- Goals List -->
-            <div class="goals-container" id="goalsContainer">
-                <!-- Goals will be dynamically added here -->
-            </div>
-            
-            <!-- Empty State -->
-            <div class="empty-state" id="emptyState">
-                <div class="empty-icon">🎯</div>
-                <p>No goals yet. Add your first goal to get started!</p>
-            </div>
-            
-            <!-- Todo Progress Summary -->
-            <div class="todo-summary" id="todoSummary" style="display: none;">
-                <div class="summary-stats">
-                    <div class="summary-stat">
-                        <span class="stat-number" id="totalTodos">0</span>
-                        <span class="stat-label">Total</span>
+                <div class="focus-mini-bars">
+                    <div class="mini-bar">
+                        <span class="mini-label">DEEP</span>
+                        <div class="mini-bar-fill deep-fill" id="deepMini"></div>
                     </div>
-                    <div class="summary-stat">
-                        <span class="stat-number" id="completedTodos">0</span>
-                        <span class="stat-label">Done</span>
+                    <div class="mini-bar">
+                        <span class="mini-label">ACTIVE</span>
+                        <div class="mini-bar-fill active-fill" id="activeMini"></div>
                     </div>
-                    <div class="summary-stat">
-                        <span class="stat-number" id="progressPercent">0%</span>
-                        <span class="stat-label">Progress</span>
+                    <div class="mini-bar">
+                        <span class="mini-label">SCAN</span>
+                        <div class="mini-bar-fill scan-fill" id="scanMini"></div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- browser content analyst Section -->
-        <section class="ai-coach">
-            <div class="section-header">
-                <h2>browser content analyst</h2>
-                <span class="coach-status" id="coachStatus">Ready to help</span>
+        <!-- Character Display -->
+        <section class="character-display" id="characterSection">
+            <div class="no-character" id="noCharacter">
+                [NO AVATAR] - Complete missions to unlock
             </div>
-            <div class="coach-content" id="coachContent">
-                <div class="coach-summary" id="coachSummary">
-                    <p>Your browser content analyst will summarize what you've been reading during focused sessions.</p>
-                    <small>Summaries appear after 5+ minutes of reading</small>
+            <div id="characterInfo" style="display: none;">
+                <div class="character-avatar minecraft-style" id="characterAvatar">
+                    <div class="minecraft-head">
+                        <div class="minecraft-face"></div>
+                    </div>
                 </div>
-                <div class="summary-list" id="summaryList" style="display: none;">
-                    <!-- Summaries will be added here -->
-                </div>
+                <div class="character-name" id="characterName">AGENT</div>
+                <div class="character-type" id="characterType">TYPE: UNKNOWN</div>
+                <div class="character-ability" id="characterAbility">[ABILITY]: Processing...</div>
             </div>
-            <button class="btn btn-secondary" id="askCoach">
-                Ask browser content analyst
-            </button>
         </section>
 
         <!-- Action Buttons -->
         <section class="actions">
             <button class="btn btn-primary" id="viewAnalytics">
-                <span>View Full Analytics</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M5 12h14m-7-7l7 7-7 7"></path>
-                </svg>
+                [ ANALYTICS ]
             </button>
-            <button class="btn btn-secondary" id="viewTodos">
-                <span>📋 My Goals & Todos</span>
+            <button class="btn btn-secondary" id="askCoach">
+                [ SYNAPSE ANALYST ]
             </button>
-            <button class="btn btn-secondary" id="setIntention">
-                <span>Set Today's Intention</span>
+            <button class="btn btn-tertiary" id="viewTodos">
+                [ MISSIONS ]
             </button>
         </section>
-
-        <!-- Minimized Stats Bar -->
-        <footer class="stats-bar">
-            <div class="stat-item">
-                <span class="stat-label">Sites</span>
-                <span class="stat-value" id="sitesCount">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Topics</span>
-                <span class="stat-value" id="topicsCount">0</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Focus Score</span>
-                <span class="stat-value" id="focusScore">--</span>
-            </div>
-        </footer>
     </div>
 
     <script src="popup.js"></script>

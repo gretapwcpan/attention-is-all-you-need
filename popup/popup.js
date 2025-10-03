@@ -1,45 +1,30 @@
-// Attention Analytics - Popup JavaScript
+// Attention Is All You Need - Popup JavaScript
 
 // DOM Elements
 const elements = {
-  // Current Focus
-  currentCategory: document.getElementById('currentCategory'),
-  currentTitle: document.getElementById('currentTitle'),
-  focusTime: document.getElementById('focusTime'),
-  focusQuality: document.getElementById('focusQuality'),
-  focusProgress: document.getElementById('focusProgress'),
-  
-  // Today's Pattern
-  totalTime: document.getElementById('totalTime'),
-  patternChart: document.getElementById('patternChart'),
-  chartLegend: document.getElementById('chartLegend'),
-  
-  // Attention Breakdown
-  deepFocusBar: document.getElementById('deepFocusBar'),
-  deepFocusTime: document.getElementById('deepFocusTime'),
-  activeReadingBar: document.getElementById('activeReadingBar'),
-  activeReadingTime: document.getElementById('activeReadingTime'),
-  scanningBar: document.getElementById('scanningBar'),
-  scanningTime: document.getElementById('scanningTime'),
-  
-  // Insight
-  insightText: document.getElementById('insightText'),
-  
   // Stats
+  totalTimeValue: document.getElementById('totalTimeValue'),
+  focusScore: document.getElementById('focusScore'),
   sitesCount: document.getElementById('sitesCount'),
   topicsCount: document.getElementById('topicsCount'),
-  focusScore: document.getElementById('focusScore'),
+  
+  // Intention
+  intentionInput: document.getElementById('intentionInput'),
+  intentionDisplay: document.getElementById('intentionDisplay'),
+  
+  // Character
+  characterSection: document.getElementById('characterSection'),
+  noCharacter: document.getElementById('noCharacter'),
+  characterInfo: document.getElementById('characterInfo'),
+  characterAvatar: document.getElementById('characterAvatar'),
+  characterName: document.getElementById('characterName'),
+  characterType: document.getElementById('characterType'),
+  characterAbility: document.getElementById('characterAbility'),
   
   // Buttons
-  settingsBtn: document.getElementById('settingsBtn'),
   viewAnalytics: document.getElementById('viewAnalytics'),
-  setIntention: document.getElementById('setIntention'),
-  
-  // browser content analyst
-  coachStatus: document.getElementById('coachStatus'),
-  coachSummary: document.getElementById('coachSummary'),
-  summaryList: document.getElementById('summaryList'),
-  askCoach: document.getElementById('askCoach')
+  askCoach: document.getElementById('askCoach'),
+  viewTodos: document.getElementById('viewTodos')
 };
 
 // State
@@ -59,12 +44,11 @@ let todayData = {
 document.addEventListener('DOMContentLoaded', async () => {
   await loadCurrentSession();
   await loadTodayData();
-  await loadAISummaries();
-  await loadTodos();
+  await loadCharacter();
   updateUI();
   startTimer();
   setupEventListeners();
-  setupTodoManager();
+  setupIntention();
 });
 
 // Load AI-generated summaries
@@ -141,9 +125,9 @@ function formatTimeAgo(timestamp) {
   return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
-// Ask browser content analyst for help - opens dialog window
+// Ask SYNAPSE ANALYST for help - opens dialog window
 async function askAICoach() {
-  // Open the coach dialog in a new window
+  // Open the SYNAPSE ANALYST dialog in a new window
   chrome.windows.create({
     url: chrome.runtime.getURL('popup/coach-dialog.html'),
     type: 'popup',
@@ -438,99 +422,124 @@ function categorizeUrl(url) {
 
 // Update UI with current data
 function updateUI() {
-  // Update current focus
-  if (currentSession) {
-    elements.currentCategory.textContent = currentSession.category;
-    elements.currentTitle.textContent = truncateText(currentSession.title, 50);
-  }
-  
-  // Update today's total time
-  const hours = Math.floor(todayData.totalTime / 3600000);
-  const minutes = Math.floor((todayData.totalTime % 3600000) / 60000);
-  elements.totalTime.textContent = `${hours}h ${minutes}m`;
-  
-  // Update attention breakdown
-  updateAttentionBreakdown();
-  
-  // Update pattern chart
-  updatePatternChart();
-  
   // Update stats
-  elements.sitesCount.textContent = todayData.uniqueSites.size || '0';
-  elements.topicsCount.textContent = todayData.topics.size || '0';
-  elements.focusScore.textContent = calculateFocusScore();
-  
-  // Update insight
-  updateInsight();
-}
-
-// Update attention breakdown bars
-function updateAttentionBreakdown() {
-  const total = todayData.totalTime || 1;
-  
-  // Deep Focus
-  const deepFocusPercent = (todayData.deepFocusTime / total) * 100;
-  elements.deepFocusBar.style.width = `${deepFocusPercent}%`;
-  elements.deepFocusTime.textContent = formatTime(todayData.deepFocusTime);
-  
-  // Active Reading
-  const activeReadingPercent = (todayData.activeReadingTime / total) * 100;
-  elements.activeReadingBar.style.width = `${activeReadingPercent}%`;
-  elements.activeReadingTime.textContent = formatTime(todayData.activeReadingTime);
-  
-  // Scanning
-  const scanningPercent = (todayData.scanningTime / total) * 100;
-  elements.scanningBar.style.width = `${scanningPercent}%`;
-  elements.scanningTime.textContent = formatTime(todayData.scanningTime);
-}
-
-// Update pattern chart
-function updatePatternChart() {
-  const chartBars = elements.patternChart.querySelector('.chart-bars');
-  const categories = Object.entries(todayData.categories || {});
-  
-  if (categories.length === 0) {
-    chartBars.innerHTML = '<div style="color: #999; font-size: 12px;">No data yet</div>';
-    return;
+  const minutes = Math.floor(todayData.totalTime / 60000);
+  if (elements.totalTimeValue) {
+    elements.totalTimeValue.textContent = minutes;
   }
   
-  // Clear existing bars
-  chartBars.innerHTML = '';
+  if (elements.sitesCount) {
+    elements.sitesCount.textContent = todayData.uniqueSites.size || '0';
+  }
   
-  // Find max value for scaling
-  const maxTime = Math.max(...categories.map(([_, time]) => time));
+  if (elements.topicsCount) {
+    elements.topicsCount.textContent = todayData.topics.size || '0';
+  }
   
-  // Create bars
-  categories.forEach(([category, time]) => {
-    const bar = document.createElement('div');
-    bar.className = `chart-bar ${category.toLowerCase()}`;
-    bar.style.height = `${(time / maxTime) * 100}%`;
-    bar.title = `${category}: ${formatTime(time)}`;
-    chartBars.appendChild(bar);
+  if (elements.focusScore) {
+    elements.focusScore.textContent = calculateFocusScore();
+  }
+  
+  // Update focus state display
+  updateFocusDisplay();
+}
+
+// Load character data
+async function loadCharacter() {
+  try {
+    const stored = await chrome.storage.local.get('userCharacter');
+    if (stored.userCharacter) {
+      displayCharacter(stored.userCharacter);
+    } else {
+      // Show no character state
+      if (elements.noCharacter) {
+        elements.noCharacter.style.display = 'block';
+      }
+      if (elements.characterInfo) {
+        elements.characterInfo.style.display = 'none';
+      }
+    }
+  } catch (error) {
+    console.error('Error loading character:', error);
+  }
+}
+
+// Display character
+function displayCharacter(character) {
+  if (elements.noCharacter) {
+    elements.noCharacter.style.display = 'none';
+  }
+  if (elements.characterInfo) {
+    elements.characterInfo.style.display = 'block';
+  }
+  
+  if (elements.characterAvatar) {
+    elements.characterAvatar.textContent = character.emoji || '🤖';
+  }
+  if (elements.characterName) {
+    elements.characterName.textContent = character.name || 'AGENT';
+  }
+  if (elements.characterType) {
+    elements.characterType.textContent = `TYPE: ${character.type || 'UNKNOWN'}`;
+  }
+  if (elements.characterAbility) {
+    elements.characterAbility.textContent = `[ABILITY]: ${character.ability || 'Processing...'}`;
+  }
+}
+
+// Setup intention system
+function setupIntention() {
+  const intentionSection = document.querySelector('.intention-section');
+  if (!intentionSection) return;
+  
+  // Load saved intention
+  chrome.storage.local.get('todayIntention', (data) => {
+    if (data.todayIntention) {
+      showIntention(data.todayIntention);
+    } else {
+      showIntentionInput();
+    }
   });
   
-  // Update legend
-  updateChartLegend(categories);
+  // Handle intention input
+  if (elements.intentionInput) {
+    elements.intentionInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const intention = e.target.value.trim();
+        if (intention) {
+          saveIntention(intention);
+        }
+      }
+    });
+  }
 }
 
-// Update chart legend
-function updateChartLegend(categories) {
-  elements.chartLegend.innerHTML = '';
-  
-  categories.forEach(([category, time]) => {
-    const item = document.createElement('div');
-    item.className = 'legend-item';
-    
-    const dot = document.createElement('div');
-    dot.className = 'legend-dot';
-    dot.style.background = getCategoryColor(category);
-    
-    const label = document.createElement('span');
-    label.textContent = category;
-    
-    item.appendChild(dot);
-    item.appendChild(label);
-    elements.chartLegend.appendChild(item);
+// Show intention input
+function showIntentionInput() {
+  if (elements.intentionInput) {
+    elements.intentionInput.style.display = 'block';
+    elements.intentionInput.focus();
+  }
+  if (elements.intentionDisplay) {
+    elements.intentionDisplay.style.display = 'none';
+  }
+}
+
+// Show saved intention
+function showIntention(intention) {
+  if (elements.intentionInput) {
+    elements.intentionInput.style.display = 'none';
+  }
+  if (elements.intentionDisplay) {
+    elements.intentionDisplay.style.display = 'block';
+    elements.intentionDisplay.textContent = intention;
+  }
+}
+
+// Save intention
+function saveIntention(intention) {
+  chrome.storage.local.set({ todayIntention: intention }, () => {
+    showIntention(intention);
   });
 }
 
@@ -567,13 +576,51 @@ function calculateFocusScore() {
   return score;
 }
 
-// Update insight text
-function updateInsight() {
-  const insights = generateInsights();
-  if (insights.length > 0) {
-    elements.insightText.textContent = insights[0];
+// Update focus state display
+function updateFocusDisplay() {
+  // Calculate percentages for mini bars
+  const totalFocusTime = todayData.deepFocusTime + todayData.activeReadingTime + todayData.scanningTime;
+  
+  if (totalFocusTime > 0) {
+    const deepPercent = (todayData.deepFocusTime / totalFocusTime) * 100;
+    const activePercent = (todayData.activeReadingTime / totalFocusTime) * 100;
+    const scanPercent = (todayData.scanningTime / totalFocusTime) * 100;
+    
+    // Update mini bars
+    const deepMini = document.getElementById('deepMini');
+    const activeMini = document.getElementById('activeMini');
+    const scanMini = document.getElementById('scanMini');
+    
+    if (deepMini) deepMini.style.width = `${deepPercent}%`;
+    if (activeMini) activeMini.style.width = `${activePercent}%`;
+    if (scanMini) scanMini.style.width = `${scanPercent}%`;
+  }
+  
+  // Update current focus badge based on current session
+  const focusBadge = document.getElementById('focusBadge');
+  if (focusBadge && currentSession) {
+    const elapsed = Date.now() - currentSession.startTime;
+    const minutes = elapsed / 60000;
+    
+    let focusState = '[SCAN]';
+    let badgeClass = 'focus-badge-large scan-state';
+    
+    if (minutes >= 10) {
+      focusState = '[DEEP]';
+      badgeClass = 'focus-badge-large deep-state';
+    } else if (minutes >= 5) {
+      focusState = '[ACTIVE]';
+      badgeClass = 'focus-badge-large active-state';
+    }
+    
+    focusBadge.textContent = focusState;
+    focusBadge.className = badgeClass;
+  } else if (focusBadge) {
+    focusBadge.textContent = '[IDLE]';
+    focusBadge.className = 'focus-badge-large idle-state';
   }
 }
+
 
 // Generate insights based on data
 function generateInsights() {
@@ -614,51 +661,58 @@ function startTimer() {
     if (currentSession) {
       const elapsed = Date.now() - currentSession.startTime;
       const minutes = Math.floor(elapsed / 60000);
-      elements.focusTime.textContent = minutes;
       
-      // Update focus quality
-      if (minutes >= 10) {
-        elements.focusQuality.textContent = '• Deep Focus';
-        elements.focusQuality.style.color = 'var(--success)';
-      } else if (minutes >= 5) {
-        elements.focusQuality.textContent = '• Active Reading';
-        elements.focusQuality.style.color = 'var(--accent)';
-      } else {
-        elements.focusQuality.textContent = '• Scanning';
-        elements.focusQuality.style.color = 'var(--warning)';
+      // Update total time display
+      if (elements.totalTimeValue) {
+        const totalMinutes = Math.floor((todayData.totalTime + elapsed) / 60000);
+        elements.totalTimeValue.textContent = totalMinutes;
       }
       
-      // Update progress bar
-      const progress = Math.min((minutes / 10) * 100, 100);
-      elements.focusProgress.style.width = `${progress}%`;
+      // Update focus state display
+      updateFocusDisplay();
     }
   }, 1000);
 }
 
 // Setup event listeners
 function setupEventListeners() {
-  elements.viewAnalytics.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
-  });
-  
-  // Remove the separate todo manager button since it's now embedded
-  const viewTodosBtn = document.getElementById('viewTodos');
-  if (viewTodosBtn) {
-    viewTodosBtn.style.display = 'none';
+  // Analytics button
+  if (elements.viewAnalytics) {
+    elements.viewAnalytics.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
+    });
   }
   
-  elements.setIntention.addEventListener('click', () => {
-    // TODO: Implement intention setting
-    alert('Intention setting coming soon!');
-  });
-  
-  elements.settingsBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('settings/settings.html') });
-  });
-  
-  // browser content analyst button
+  // SYNAPSE ANALYST button
   if (elements.askCoach) {
-    elements.askCoach.addEventListener('click', askAICoach);
+    elements.askCoach.addEventListener('click', () => {
+      chrome.windows.create({
+        url: chrome.runtime.getURL('popup/coach-dialog.html'),
+        type: 'popup',
+        width: 500,
+        height: 600,
+        left: Math.round((screen.width - 500) / 2),
+        top: Math.round((screen.height - 600) / 2)
+      });
+    });
+  }
+  
+  // Missions (Todo) button
+  if (elements.viewTodos) {
+    elements.viewTodos.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('popup/todo-manager.html') });
+    });
+  }
+  
+  // Click on intention display to edit
+  if (elements.intentionDisplay) {
+    elements.intentionDisplay.addEventListener('click', () => {
+      showIntentionInput();
+      if (elements.intentionInput) {
+        elements.intentionInput.value = elements.intentionDisplay.textContent;
+        elements.intentionInput.select();
+      }
+    });
   }
 }
 

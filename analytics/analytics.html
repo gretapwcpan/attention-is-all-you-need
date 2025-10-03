@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attention Analytics - Full Dashboard</title>
+    <title>Focus Forge Matrix</title>
     <link rel="stylesheet" href="analytics.css">
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <h1>Attention Analytics Dashboard</h1>
+            <h1>Focus Forge Matrix</h1>
             <div class="header-actions">
                 <button id="exportBtn" class="btn btn-secondary">Export Data</button>
                 <button id="clearBtn" class="btn btn-danger">Clear All Data</button>
@@ -50,6 +50,36 @@
                 <h2>Category Distribution</h2>
                 <div class="chart" id="categoryChart">
                     <canvas id="categoryCanvas"></canvas>
+                </div>
+            </section>
+
+            <!-- Focus State Distribution -->
+            <section class="chart-section">
+                <h2>Mind State Distribution</h2>
+                <div class="focus-distribution" id="focusDistribution">
+                    <div class="focus-bar-container">
+                        <div class="focus-bar-item">
+                            <div class="focus-bar-label">[DEEP]</div>
+                            <div class="focus-bar-wrapper">
+                                <div class="focus-bar focus-deep" id="deepBar"></div>
+                            </div>
+                            <div class="focus-bar-value" id="deepValue">0m</div>
+                        </div>
+                        <div class="focus-bar-item">
+                            <div class="focus-bar-label">[ACTIVE]</div>
+                            <div class="focus-bar-wrapper">
+                                <div class="focus-bar focus-active" id="activeBar"></div>
+                            </div>
+                            <div class="focus-bar-value" id="activeValue">0m</div>
+                        </div>
+                        <div class="focus-bar-item">
+                            <div class="focus-bar-label">[SCAN]</div>
+                            <div class="focus-bar-wrapper">
+                                <div class="focus-bar focus-scanning" id="scanBar"></div>
+                            </div>
+                            <div class="focus-bar-value" id="scanValue">0m</div>
+                        </div>
+                    </div>
                 </div>
             </section>
 

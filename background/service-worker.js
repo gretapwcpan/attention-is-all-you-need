@@ -1,4 +1,4 @@
-// Attention Analytics - Background Service Worker
+// Attention Is All You Need - Background Service Worker
 
 // Import AI and character modules
 import { getAIService } from '../utils/ai-service.js';
@@ -19,7 +19,7 @@ let todoMapperAvailable = false;
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('Attention Analytics installed');
+  console.log('Attention Is All You Need installed');
   
   // Initialize storage with default data
   await initializeStorage();
