@@ -3,32 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI MIND ARCHITECT - Cyberpunk Edition</title>
+    <title>AI MIND ARCHITECT - Terminal Interface</title>
     <link rel="stylesheet" href="coach-dialog.css">
 </head>
 <body>
+    <!-- Matrix Rain Background -->
+    <div class="matrix-rain" id="matrixRain"></div>
+    
     <div class="coach-dialog">
         <div class="coach-header">
             <div class="coach-avatar">AI</div>
             <div class="coach-info">
                 <h2>AI MIND ARCHITECT</h2>
-                <span class="coach-status" id="coachStatus">System Online</span>
+                <span class="coach-status" id="coachStatus">SYSTEM ONLINE</span>
             </div>
         </div>
         
         <div class="coach-messages" id="coachMessages">
-            <!-- Messages will be added here -->
+            <!-- Boot sequence message -->
+            <div class="message coach">
+                <span>Initializing Neural Terminal v2.0.1...</span>
+            </div>
+            <div class="message coach">
+                <span>Loading AI modules... [OK]</span>
+            </div>
+            <div class="message coach">
+                <span>Establishing secure connection... [OK]</span>
+            </div>
+            <div class="message coach">
+                <span>MIND ARCHITECT ONLINE. How may I assist you?</span>
+            </div>
         </div>
         
         <div class="coach-input">
-            <input type="text" id="userInput" placeholder="Enter command..." />
-            <button id="sendButton">SEND</button>
+            <input type="text" id="userInput" placeholder="type command..." />
+            <button id="sendButton">[EXECUTE]</button>
         </div>
         
         <div class="coach-actions">
-            <button id="getSummaryBtn" class="action-btn">[ SUMMARY ]</button>
-            <button id="getInsightsBtn" class="action-btn">[ INSIGHTS ]</button>
-            <button id="closeBtn" class="action-btn secondary">[ EXIT ]</button>
+            <button id="getSummaryBtn" class="action-btn">SUMMARY</button>
+            <button id="getInsightsBtn" class="action-btn">INSIGHTS</button>
+            <button id="closeBtn" class="action-btn secondary">EXIT</button>
         </div>
     </div>
     

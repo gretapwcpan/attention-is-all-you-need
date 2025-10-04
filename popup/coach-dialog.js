@@ -1,4 +1,4 @@
-// browser content analyst Dialog JavaScript
+// AI MIND ARCHITECT - Terminal Interface
 
 let todayData = null;
 let sessions = [];
@@ -7,12 +7,37 @@ let aiService = null;
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', async () => {
+  initializeMatrixRain();
   await loadTodayData();
   await loadSessions();
   await initializeAI();
   initializeChat();
   setupEventListeners();
 });
+
+// Initialize Matrix rain effect
+function initializeMatrixRain() {
+  const matrixContainer = document.getElementById('matrixRain');
+  const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+  const columns = 20;
+  
+  for (let i = 0; i < columns; i++) {
+    const column = document.createElement('div');
+    column.className = 'matrix-column';
+    column.style.left = `${(i / columns) * 100}%`;
+    column.style.animationDuration = `${Math.random() * 10 + 10}s`;
+    column.style.animationDelay = `${Math.random() * 5}s`;
+    
+    // Generate random characters for the column
+    let text = '';
+    for (let j = 0; j < 100; j++) {
+      text += characters[Math.floor(Math.random() * characters.length)] + '\n';
+    }
+    column.textContent = text;
+    
+    matrixContainer.appendChild(column);
+  }
+}
 
 // Initialize AI service
 async function initializeAI() {
@@ -60,20 +85,20 @@ function initializeChat() {
 // Get personalized greeting based on reading data
 function getGreeting() {
   const hour = new Date().getHours();
-  let timePrefix = hour < 12 ? '[MORNING PROTOCOL]' : hour < 18 ? '[DAY PROTOCOL]' : '[NIGHT PROTOCOL]';
+  let timePrefix = hour < 12 ? '[MORNING_PROTOCOL]' : hour < 18 ? '[DAY_PROTOCOL]' : '[NIGHT_PROTOCOL]';
   
   if (!sessions || sessions.length === 0) {
-    return `${timePrefix} Neural Coach online. No data streams detected. Initialize browsing sequence to begin cognitive analysis.`;
+    return `${timePrefix} Neural terminal online. No data streams detected. Execute browsing sequence to begin analysis.`;
   }
   
   const recentPages = sessions.slice(-3).map(s => s.title);
   const totalMinutes = Math.floor(todayData.totalTime / 60000);
   
   if (recentPages.length > 0) {
-    return `${timePrefix} Data stream detected: "${truncateTitle(recentPages[0])}" [+${recentPages.length-1} more]. Session duration: ${totalMinutes} minutes. Ready for cognitive synthesis.`;
+    return `${timePrefix} Data stream active: "${truncateTitle(recentPages[0])}" [+${recentPages.length-1} nodes]. Duration: ${totalMinutes}min. Ready for synthesis.`;
   }
   
-  return `${timePrefix} Session active for ${totalMinutes} minutes. Neural patterns recorded. Awaiting query input.`;
+  return `${timePrefix} Session: ${totalMinutes}min. Neural patterns recorded. Awaiting command input.`;
 }
 
 // Setup event listeners
@@ -373,23 +398,45 @@ function generateFallbackInsights() {
   return insights.join('\n\n');
 }
 
-// Add message to chat
+// Add message to chat with typing effect
 function addMessage(text, sender) {
   const messagesDiv = document.getElementById('coachMessages');
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${sender}`;
   
-  // Convert line breaks to <br> for proper display
-  messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+  if (sender === 'coach') {
+    // Add typing effect for AI messages
+    typeMessage(messageDiv, text, messagesDiv);
+  } else {
+    // Instant display for user messages
+    messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+    messagesDiv.appendChild(messageDiv);
+  }
   
-  // Add timestamp
-  const timeDiv = document.createElement('div');
-  timeDiv.className = 'message-time';
-  timeDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  messageDiv.appendChild(timeDiv);
-  
-  messagesDiv.appendChild(messageDiv);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
+
+// Typing effect for messages
+function typeMessage(element, text, container) {
+  let index = 0;
+  const speed = 20; // milliseconds per character
+  element.innerHTML = '';
+  container.appendChild(element);
+  
+  function type() {
+    if (index < text.length) {
+      if (text.charAt(index) === '\n') {
+        element.innerHTML += '<br>';
+      } else {
+        element.innerHTML += text.charAt(index);
+      }
+      index++;
+      container.scrollTop = container.scrollHeight;
+      setTimeout(type, speed);
+    }
+  }
+  
+  type();
 }
 
 // Show typing indicator
