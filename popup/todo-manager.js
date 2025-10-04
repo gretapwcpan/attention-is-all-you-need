@@ -1,8 +1,7 @@
-// Todo Manager JavaScript
+// Todo Manager JavaScript - Simplified Goals Only Version
 class TodoManager {
     constructor() {
         this.goals = [];
-        this.activeTimers = {};
         this.init();
     }
 
@@ -11,24 +10,45 @@ class TodoManager {
         this.setupEventListeners();
         this.render();
         this.updateProgress();
-        this.showMotivationalMessage();
+        this.showMotivationalMessage('Mission Control Online. Ready for objectives.');
     }
 
     setupEventListeners() {
+        // Back button
+        const backBtn = document.getElementById('backBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                window.close();
+            });
+        }
+        
         // Add goal button
-        document.getElementById('addGoalBtn').addEventListener('click', () => this.addGoal());
-        document.getElementById('newGoalInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addGoal();
-        });
+        const addBtn = document.getElementById('addGoalBtn');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => this.addGoal());
+        }
+        
+        const goalInput = document.getElementById('goalInput');
+        if (goalInput) {
+            goalInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.addGoal();
+            });
+        }
 
         // Footer buttons
-        document.getElementById('viewAnalyticsBtn').addEventListener('click', () => {
-            chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
-        });
+        const analyticsBtn = document.getElementById('viewAnalyticsBtn');
+        if (analyticsBtn) {
+            analyticsBtn.addEventListener('click', () => {
+                chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
+            });
+        }
 
-        document.getElementById('clearCompletedBtn').addEventListener('click', () => {
-            this.clearCompleted();
-        });
+        const clearBtn = document.getElementById('clearCompletedBtn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                this.clearCompleted();
+            });
+        }
     }
 
     loadData() {
@@ -36,8 +56,13 @@ class TodoManager {
         if (savedData) {
             const data = JSON.parse(savedData);
             this.goals = data.goals || [];
+            // Ensure all goals have a completed property
+            this.goals.forEach(goal => {
+                if (goal.completed === undefined) {
+                    goal.completed = false;
+                }
+            });
         } else {
-            // Initialize with sample data for first-time users
             this.goals = [];
         }
     }
@@ -60,17 +85,17 @@ class TodoManager {
     }
 
     addGoal() {
-        const input = document.getElementById('newGoalInput');
-        const title = input.value.trim();
+        const input = document.getElementById('goalInput');
+        if (!input) return;
         
+        const title = input.value.trim();
         if (!title) return;
 
         const newGoal = {
             id: this.generateId(),
             title: title,
-            todos: [],
-            createdAt: new Date().toISOString(),
-            progress: 0
+            completed: false,
+            createdAt: new Date().toISOString()
         };
 
         this.goals.push(newGoal);
@@ -79,11 +104,83 @@ class TodoManager {
         this.updateProgress();
         
         input.value = '';
-        this.showMotivationalMessage('🎯 New goal added! Let\'s break it down into actionable todos.');
+        this.showMotivationalMessage('🎯 New mission deployed! Stay focused on your objective.');
+    }
+
+    async toggleGoal(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal) return;
+
+        goal.completed = !goal.completed;
+        if (goal.completed) {
+            goal.completedAt = new Date().toISOString();
+            this.showMotivationalMessage(this.getCompletionMessage(goal));
+            
+            // Award 1 XP for completing a mission
+            await this.awardXP(1);
+            
+            // Notify Tamagotchi pet about mission completion
+            if (chrome.runtime && chrome.runtime.sendMessage) {
+                chrome.runtime.sendMessage({
+                    action: 'missionCompleted',
+                    missionData: {
+                        goalTitle: goal.title
+                    }
+                }).catch(() => {
+                    // Ignore errors if background script isn't ready
+                });
+            }
+        }
+        
+        this.saveData();
+        this.render();
+        this.updateProgress();
+    }
+    
+    async awardXP(amount) {
+        try {
+            // Get current XP
+            const data = await chrome.storage.local.get('userXP');
+            const currentXP = data.userXP || 0;
+            const newXP = currentXP + amount;
+            
+            // Save new XP
+            await chrome.storage.local.set({ userXP: newXP });
+            
+            // Show XP gain animation
+            this.showXPGain(amount);
+        } catch (error) {
+            console.error('Error awarding XP:', error);
+        }
+    }
+    
+    showXPGain(amount) {
+        const xpGain = document.createElement('div');
+        xpGain.className = 'xp-gain';
+        xpGain.textContent = `+${amount} XP`;
+        xpGain.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Orbitron', monospace;
+            font-size: 32px;
+            font-weight: 900;
+            color: #FFD700;
+            text-shadow: 0 0 20px #FFD700;
+            z-index: 10000;
+            pointer-events: none;
+            animation: xp-float-up 1.5s ease-out forwards;
+        `;
+        document.body.appendChild(xpGain);
+        
+        setTimeout(() => {
+            xpGain.remove();
+        }, 1500);
     }
 
     deleteGoal(goalId) {
-        if (confirm('Are you sure you want to delete this goal and all its todos?')) {
+        if (confirm('Are you sure you want to delete this mission?')) {
             this.goals = this.goals.filter(g => g.id !== goalId);
             this.saveData();
             this.render();
@@ -91,166 +188,30 @@ class TodoManager {
         }
     }
 
-    addTodo(goalId) {
-        const goal = this.goals.find(g => g.id === goalId);
-        if (!goal) return;
-
-        const goalElement = document.querySelector(`[data-goal-id="${goalId}"]`);
-        const titleInput = goalElement.querySelector('.new-todo-input');
-        const timeInput = goalElement.querySelector('.todo-time-estimate');
-        
-        const title = titleInput.value.trim();
-        const estimatedTime = parseInt(timeInput.value) || 30; // Default 30 minutes
-        
-        if (!title) return;
-
-        const newTodo = {
-            id: this.generateId(),
-            title: title,
-            estimatedTime: estimatedTime,
-            actualTime: 0,
-            completed: false,
-            createdAt: new Date().toISOString(),
-            sessions: []
-        };
-
-        goal.todos.push(newTodo);
-        this.saveData();
-        this.renderGoal(goal);
-        this.updateGoalProgress(goal);
-        
-        titleInput.value = '';
-        timeInput.value = '';
-    }
-
-    toggleTodo(goalId, todoId) {
-        const goal = this.goals.find(g => g.id === goalId);
-        if (!goal) return;
-        
-        const todo = goal.todos.find(t => t.id === todoId);
-        if (!todo) return;
-
-        todo.completed = !todo.completed;
-        if (todo.completed) {
-            todo.completedAt = new Date().toISOString();
-            this.showMotivationalMessage(this.getCompletionMessage(goal, todo));
-            
-            // Notify Tamagotchi pet about mission completion
-            chrome.runtime.sendMessage({
-                action: 'missionCompleted',
-                missionData: {
-                    goalTitle: goal.title,
-                    todoTitle: todo.title,
-                    estimatedTime: todo.estimatedTime,
-                    actualTime: todo.actualTime
-                }
-            });
-            
-            // Also update pet in popup if it's open
-            chrome.runtime.sendMessage({
-                action: 'updateTamagotchi',
-                type: 'missionComplete'
-            });
-        }
-        
-        this.saveData();
-        this.renderGoal(goal);
-        this.updateGoalProgress(goal);
-        this.updateProgress();
-    }
-
-    deleteTodo(goalId, todoId) {
-        const goal = this.goals.find(g => g.id === goalId);
-        if (!goal) return;
-        
-        goal.todos = goal.todos.filter(t => t.id !== todoId);
-        this.saveData();
-        this.renderGoal(goal);
-        this.updateGoalProgress(goal);
-        this.updateProgress();
-    }
-
-    startTimer(goalId, todoId) {
-        const timerId = `${goalId}-${todoId}`;
-        
-        if (this.activeTimers[timerId]) return;
-
-        const startTime = Date.now();
-        const todoElement = document.querySelector(`[data-todo-id="${todoId}"]`);
-        const timerDisplay = todoElement.querySelector('.timer-display');
-        const timerSection = todoElement.querySelector('.todo-timer');
-        const startBtn = todoElement.querySelector('.start-timer');
-        
-        timerSection.style.display = 'flex';
-        startBtn.style.display = 'none';
-
-        this.activeTimers[timerId] = setInterval(() => {
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }, 1000);
-
-        // Store timer start in todo sessions
-        const goal = this.goals.find(g => g.id === goalId);
-        const todo = goal.todos.find(t => t.id === todoId);
-        todo.currentSession = { startTime: startTime };
-    }
-
-    stopTimer(goalId, todoId) {
-        const timerId = `${goalId}-${todoId}`;
-        
-        if (!this.activeTimers[timerId]) return;
-
-        clearInterval(this.activeTimers[timerId]);
-        delete this.activeTimers[timerId];
-
-        const goal = this.goals.find(g => g.id === goalId);
-        const todo = goal.todos.find(t => t.id === todoId);
-        
-        if (todo.currentSession) {
-            const sessionTime = Math.floor((Date.now() - todo.currentSession.startTime) / 1000 / 60); // in minutes
-            todo.actualTime = (todo.actualTime || 0) + sessionTime;
-            todo.sessions.push({
-                startTime: todo.currentSession.startTime,
-                endTime: Date.now(),
-                duration: sessionTime
-            });
-            delete todo.currentSession;
-        }
-
-        this.saveData();
-        this.renderGoal(goal);
-        
-        // Show progress message
-        if (todo.actualTime >= todo.estimatedTime && !todo.completed) {
-            this.showMotivationalMessage(`⏰ You've spent ${todo.actualTime} minutes on "${todo.title}". Time to mark it complete?`);
-        }
-    }
-
-    updateGoalProgress(goal) {
-        if (goal.todos.length === 0) {
-            goal.progress = 0;
-        } else {
-            const completed = goal.todos.filter(t => t.completed).length;
-            goal.progress = Math.round((completed / goal.todos.length) * 100);
-        }
-        this.saveData();
-    }
-
     updateProgress() {
-        let totalTodos = 0;
-        let completedTodos = 0;
+        const totalGoals = this.goals.length;
+        const completedGoals = this.goals.filter(g => g.completed).length;
         
-        this.goals.forEach(goal => {
-            totalTodos += goal.todos.length;
-            completedTodos += goal.todos.filter(t => t.completed).length;
-        });
-
-        const progress = totalTodos > 0 ? Math.round((completedTodos / totalTodos) * 100) : 0;
-        document.getElementById('todayProgress').textContent = `${progress}%`;
+        const progress = totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0;
         
-        // Update streak (simplified version - tracks consecutive days with completions)
+        // Update stats
+        const totalGoalsEl = document.getElementById('totalGoals');
+        if (totalGoalsEl) totalGoalsEl.textContent = totalGoals;
+        
+        const completedGoalsEl = document.getElementById('completedGoals');
+        if (completedGoalsEl) completedGoalsEl.textContent = completedGoals;
+        
+        const progressEl = document.getElementById('todayProgress');
+        if (progressEl) progressEl.textContent = `${progress}%`;
+        
+        const progressPercentEl = document.getElementById('progressPercent');
+        if (progressPercentEl) progressPercentEl.textContent = `${progress}%`;
+        
+        // Update progress bar
+        const progressFill = document.getElementById('progressFill');
+        if (progressFill) progressFill.style.width = `${progress}%`;
+        
+        // Update streak
         this.updateStreak();
     }
 
@@ -270,40 +231,44 @@ class TodoManager {
             localStorage.setItem('streak', streak.toString());
         }
         
-        document.getElementById('streak').textContent = `${streak} ${streak === 1 ? 'day' : 'days'}`;
+        const streakEl = document.getElementById('streak');
+        if (streakEl) {
+            streakEl.textContent = `${streak} ${streak === 1 ? 'day' : 'days'}`;
+        }
     }
 
     clearCompleted() {
-        this.goals.forEach(goal => {
-            goal.todos = goal.todos.filter(t => !t.completed);
-        });
-        this.saveData();
-        this.render();
-        this.updateProgress();
-        this.showMotivationalMessage('🧹 Completed todos cleared! Ready for new challenges.');
+        const completedCount = this.goals.filter(g => g.completed).length;
+        if (completedCount === 0) {
+            this.showMotivationalMessage('No completed missions to clear.');
+            return;
+        }
+        
+        if (confirm(`Clear ${completedCount} completed mission${completedCount > 1 ? 's' : ''}?`)) {
+            this.goals = this.goals.filter(g => !g.completed);
+            this.saveData();
+            this.render();
+            this.updateProgress();
+            this.showMotivationalMessage('🧹 Completed missions cleared! Ready for new objectives.');
+        }
     }
 
-    getCompletionMessage(goal, todo) {
+    getCompletionMessage(goal) {
         const messages = [
-            `✅ Great job completing "${todo.title}"!`,
-            `🎉 Another one done! You're making progress on "${goal.title}"!`,
-            `💪 Keep it up! "${todo.title}" is complete!`,
-            `🚀 You're on fire! "${todo.title}" checked off!`,
-            `⭐ Excellent work on "${todo.title}"!`
+            `✅ Mission "${goal.title}" complete!`,
+            `🎉 Objective achieved: "${goal.title}"!`,
+            `💪 Well done! "${goal.title}" is done!`,
+            `🚀 Success! "${goal.title}" accomplished!`,
+            `⭐ Excellent! "${goal.title}" completed!`
         ];
-        
-        // Add special messages for milestones
-        if (goal.progress === 100) {
-            return `🏆 Incredible! You've completed all todos for "${goal.title}"!`;
-        } else if (goal.progress >= 50 && goal.progress < 60) {
-            return `📊 You're 50% done with "${goal.title}"! Halfway there!`;
-        }
         
         return messages[Math.floor(Math.random() * messages.length)];
     }
 
     showMotivationalMessage(message) {
         const messageElement = document.getElementById('motivationalMessage');
+        if (!messageElement) return;
+        
         messageElement.textContent = message;
         messageElement.classList.add('show');
         
@@ -314,12 +279,13 @@ class TodoManager {
 
     render() {
         const goalsList = document.getElementById('goalsList');
+        if (!goalsList) return;
         
         if (this.goals.length === 0) {
             goalsList.innerHTML = `
                 <div class="empty-state">
-                    <h3>No goals yet</h3>
-                    <p>Start by adding your first goal above!</p>
+                    <h3>No missions yet</h3>
+                    <p>Deploy your first mission objective above!</p>
                 </div>
             `;
             return;
@@ -332,101 +298,79 @@ class TodoManager {
     }
 
     renderGoal(goal) {
-        const existingElement = document.querySelector(`[data-goal-id="${goal.id}"]`);
-        
         const template = document.getElementById('goalTemplate');
+        if (!template) return;
+        
         const goalElement = template.content.cloneNode(true);
         const goalItem = goalElement.querySelector('.goal-item');
         
-        goalItem.dataset.goalId = goal.id;
-        goalElement.querySelector('.goal-title').textContent = goal.title;
-        goalElement.querySelector('.goal-progress').textContent = `${goal.progress}%`;
+        if (goalItem) {
+            goalItem.dataset.goalId = goal.id;
+            if (goal.completed) {
+                goalItem.classList.add('completed');
+            }
+        }
         
-        // Setup goal header click to expand/collapse
-        const header = goalElement.querySelector('.goal-header');
-        const content = goalElement.querySelector('.goal-content');
-        const expandIcon = goalElement.querySelector('.goal-expand-icon');
+        const titleEl = goalElement.querySelector('.goal-title');
+        if (titleEl) {
+            titleEl.textContent = goal.title;
+        }
         
-        header.addEventListener('click', (e) => {
-            if (e.target.closest('.goal-actions')) return;
-            
-            const isExpanded = content.style.display !== 'none';
-            content.style.display = isExpanded ? 'none' : 'block';
-            expandIcon.classList.toggle('expanded', !isExpanded);
-        });
+        // Complete button instead of checkbox
+        const completeBtn = goalElement.querySelector('.complete-goal');
+        if (completeBtn) {
+            if (goal.completed) {
+                completeBtn.style.display = 'none';
+            } else {
+                completeBtn.addEventListener('click', async () => {
+                    await this.toggleGoal(goal.id);
+                    this.triggerCoinCelebration();
+                });
+            }
+        }
         
-        // Delete goal button
-        goalElement.querySelector('.delete-goal').addEventListener('click', () => {
-            this.deleteGoal(goal.id);
-        });
+        const deleteBtn = goalElement.querySelector('.delete-goal');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                this.deleteGoal(goal.id);
+            });
+        }
         
-        // Add todo button
-        goalElement.querySelector('.btn-add-todo').addEventListener('click', () => {
-            this.addTodo(goal.id);
-        });
-        
-        // Add todo on Enter key
-        const todoInput = goalElement.querySelector('.new-todo-input');
-        todoInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.addTodo(goal.id);
-        });
-        
-        // Render todos
-        const todosList = goalElement.querySelector('.todos-list');
-        goal.todos.forEach(todo => {
-            const todoElement = this.renderTodo(goal.id, todo);
-            todosList.appendChild(todoElement);
-        });
-        
-        if (existingElement) {
-            existingElement.replaceWith(goalElement);
-        } else {
-            document.getElementById('goalsList').appendChild(goalElement);
+        const goalsList = document.getElementById('goalsList');
+        if (goalsList) {
+            goalsList.appendChild(goalElement);
         }
     }
-
-    renderTodo(goalId, todo) {
-        const template = document.getElementById('todoTemplate');
-        const todoElement = template.content.cloneNode(true);
-        const todoItem = todoElement.querySelector('.todo-item');
+    
+    triggerCoinCelebration() {
+        const celebrationContainer = document.getElementById('coinCelebration');
+        if (!celebrationContainer) return;
         
-        todoItem.dataset.todoId = todo.id;
-        if (todo.completed) {
-            todoItem.classList.add('completed');
+        // Clear any existing coins
+        celebrationContainer.innerHTML = '';
+        
+        // Create multiple coins
+        const coinCount = 8;
+        for (let i = 0; i < coinCount; i++) {
+            setTimeout(() => {
+                const coin = document.createElement('div');
+                coin.className = 'gold-coin';
+                coin.style.left = Math.random() * window.innerWidth + 'px';
+                coin.innerHTML = `
+                    <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+                        <circle cx="12" cy="12" r="8" fill="none" stroke="#FFA500" stroke-width="0.5"/>
+                        <text x="12" y="16" text-anchor="middle" fill="#FFA500" font-size="12" font-weight="bold">$</text>
+                    </svg>
+                `;
+                celebrationContainer.appendChild(coin);
+                
+                // Remove coin after animation
+                setTimeout(() => {
+                    coin.remove();
+                }, 2000);
+            }, i * 100);
         }
-        
-        const checkbox = todoElement.querySelector('.todo-checkbox');
-        checkbox.checked = todo.completed;
-        checkbox.addEventListener('change', () => {
-            this.toggleTodo(goalId, todo.id);
-        });
-        
-        todoElement.querySelector('.todo-title').textContent = todo.title;
-        todoElement.querySelector('.todo-time-estimate').textContent = `Est: ${todo.estimatedTime}m`;
-        
-        if (todo.actualTime > 0) {
-            const actualTimeElement = todoElement.querySelector('.todo-time-actual');
-            actualTimeElement.textContent = `Actual: ${todo.actualTime}m`;
-            actualTimeElement.style.display = 'inline-block';
-        }
-        
-        // Timer button
-        const timerBtn = todoElement.querySelector('.start-timer');
-        timerBtn.addEventListener('click', () => {
-            this.startTimer(goalId, todo.id);
-        });
-        
-        // Stop timer button
-        todoElement.querySelector('.btn-stop-timer').addEventListener('click', () => {
-            this.stopTimer(goalId, todo.id);
-        });
-        
-        // Delete todo button
-        todoElement.querySelector('.delete-todo').addEventListener('click', () => {
-            this.deleteTodo(goalId, todo.id);
-        });
-        
-        return todoElement;
     }
 }
 

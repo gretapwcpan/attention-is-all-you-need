@@ -5,12 +5,6 @@ const elements = {
   // Stats
   totalTimeValue: document.getElementById('totalTimeValue'),
   focusScore: document.getElementById('focusScore'),
-  sitesCount: document.getElementById('sitesCount'),
-  topicsCount: document.getElementById('topicsCount'),
-  
-  // Intention
-  intentionInput: document.getElementById('intentionInput'),
-  intentionDisplay: document.getElementById('intentionDisplay'),
   
   // Character
   characterSection: document.getElementById('characterSection'),
@@ -46,11 +40,74 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadTodayData();
   await loadCharacter();
   await initTamagotchi();
+  await loadXP();
   updateUI();
   startTimer();
   setupEventListeners();
-  setupIntention();
 });
+
+// XP System
+let userXP = 0;
+
+async function loadXP() {
+  try {
+    const data = await chrome.storage.local.get('userXP');
+    userXP = data.userXP || 0;
+    updateXPDisplay();
+  } catch (error) {
+    console.error('Error loading XP:', error);
+  }
+}
+
+async function addXP(amount) {
+  userXP += amount;
+  await chrome.storage.local.set({ userXP });
+  updateXPDisplay();
+  showXPGain(amount);
+}
+
+function updateXPDisplay() {
+  const xpValue = document.getElementById('xpValue');
+  if (xpValue) {
+    xpValue.textContent = userXP;
+  }
+  
+  // Calculate level and progress
+  const level = Math.floor(userXP / 10) + 1;
+  const xpInCurrentLevel = userXP % 10;
+  const xpForNextLevel = 10;
+  const progressPercent = (xpInCurrentLevel / xpForNextLevel) * 100;
+  
+  // Update level display
+  const xpLevel = document.getElementById('xpLevel');
+  if (xpLevel) {
+    xpLevel.textContent = `LEVEL ${level}`;
+  }
+  
+  // Update progress bar
+  const xpBarFill = document.getElementById('xpBarFill');
+  if (xpBarFill) {
+    xpBarFill.style.width = `${progressPercent}%`;
+  }
+  
+  // Update next level text
+  const xpNext = document.getElementById('xpNext');
+  if (xpNext) {
+    const xpNeeded = xpForNextLevel - xpInCurrentLevel;
+    xpNext.textContent = `${xpNeeded} XP to level ${level + 1}`;
+  }
+}
+
+function showXPGain(amount) {
+  const xpGain = document.createElement('div');
+  xpGain.className = 'xp-gain';
+  xpGain.textContent = `+${amount} XP`;
+  document.body.appendChild(xpGain);
+  
+  setTimeout(() => {
+    xpGain.remove();
+  }, 1500);
+}
 
 // Tamagotchi Pet System
 let tamagotchiPet = null;
@@ -124,12 +181,6 @@ function updatePetDisplay() {
   updateStatBar('happiness', tamagotchiPet.stats.happiness);
   updateStatBar('energy', tamagotchiPet.stats.energy);
   updateStatBar('knowledge', tamagotchiPet.stats.knowledge);
-  
-  // Update missions count
-  const missionsCount = document.getElementById('missionsCount');
-  if (missionsCount) {
-    missionsCount.textContent = tamagotchiPet.missionsCompleted;
-  }
 }
 
 function updateStatBar(stat, value) {
@@ -244,83 +295,12 @@ function updatePetWithFocusState() {
   updatePetDisplay();
 }
 
-// Load AI-generated summaries
-async function loadAISummaries() {
-  try {
-    // Get recent reading sessions from storage
-    const summaries = await chrome.storage.local.get('readingSummaries');
-    
-    if (summaries.readingSummaries && summaries.readingSummaries.length > 0) {
-      // Update coach status
-      elements.coachStatus.textContent = `${summaries.readingSummaries.length} summaries available`;
-      
-      // Hide default message and show summaries
-      elements.coachSummary.style.display = 'none';
-      elements.summaryList.style.display = 'flex';
-      
-      // Display summaries
-      displaySummaries(summaries.readingSummaries.slice(0, 3));
-    } else {
-      // Show default message
-      elements.coachStatus.textContent = 'Ready to help';
-      elements.coachSummary.style.display = 'block';
-      elements.summaryList.style.display = 'none';
-    }
-  } catch (error) {
-    console.error('Error loading summaries:', error);
-    elements.coachStatus.textContent = 'Ready to help';
-  }
-}
+// Note: AI summaries feature has been removed as the DOM elements no longer exist
+// This functionality has been replaced by the Tamagotchi pet system
 
-// Display reading summaries
-function displaySummaries(summaries) {
-  elements.summaryList.innerHTML = '';
-  
-  summaries.forEach(summary => {
-    const item = document.createElement('div');
-    item.className = 'summary-item';
-    
-    const title = document.createElement('div');
-    title.className = 'summary-title';
-    title.textContent = summary.title || 'Reading Summary';
-    
-    const text = document.createElement('div');
-    text.className = 'summary-text';
-    text.textContent = summary.text || 'Summary of your recent reading session...';
-    
-    const time = document.createElement('div');
-    time.className = 'summary-time';
-    time.textContent = formatTimeAgo(summary.timestamp);
-    
-    item.appendChild(title);
-    item.appendChild(text);
-    item.appendChild(time);
-    
-    elements.summaryList.appendChild(item);
-  });
-}
-
-// Format time ago
-function formatTimeAgo(timestamp) {
-  if (!timestamp) return 'Recently';
-  
-  const now = Date.now();
-  const diff = now - timestamp;
-  const minutes = Math.floor(diff / 60000);
-  
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes} min ago`;
-  
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  
-  const days = Math.floor(hours / 24);
-  return `${days} day${days > 1 ? 's' : ''} ago`;
-}
-
-// Ask SYNAPSE ANALYST for help - opens dialog window
+// Ask AI MIND ARCHITECT for help - opens dialog window
 async function askAICoach() {
-  // Open the SYNAPSE ANALYST dialog in a new window
+  // Open the AI MIND ARCHITECT dialog in a new window
   chrome.windows.create({
     url: chrome.runtime.getURL('popup/coach-dialog.html'),
     type: 'popup',
@@ -621,14 +601,6 @@ function updateUI() {
     elements.totalTimeValue.textContent = minutes;
   }
   
-  if (elements.sitesCount) {
-    elements.sitesCount.textContent = todayData.uniqueSites.size || '0';
-  }
-  
-  if (elements.topicsCount) {
-    elements.topicsCount.textContent = todayData.topics.size || '0';
-  }
-  
   if (elements.focusScore) {
     elements.focusScore.textContent = calculateFocusScore();
   }
@@ -680,61 +652,7 @@ function displayCharacter(character) {
   }
 }
 
-// Setup intention system
-function setupIntention() {
-  const intentionSection = document.querySelector('.intention-section');
-  if (!intentionSection) return;
-  
-  // Load saved intention
-  chrome.storage.local.get('todayIntention', (data) => {
-    if (data.todayIntention) {
-      showIntention(data.todayIntention);
-    } else {
-      showIntentionInput();
-    }
-  });
-  
-  // Handle intention input
-  if (elements.intentionInput) {
-    elements.intentionInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const intention = e.target.value.trim();
-        if (intention) {
-          saveIntention(intention);
-        }
-      }
-    });
-  }
-}
-
-// Show intention input
-function showIntentionInput() {
-  if (elements.intentionInput) {
-    elements.intentionInput.style.display = 'block';
-    elements.intentionInput.focus();
-  }
-  if (elements.intentionDisplay) {
-    elements.intentionDisplay.style.display = 'none';
-  }
-}
-
-// Show saved intention
-function showIntention(intention) {
-  if (elements.intentionInput) {
-    elements.intentionInput.style.display = 'none';
-  }
-  if (elements.intentionDisplay) {
-    elements.intentionDisplay.style.display = 'block';
-    elements.intentionDisplay.textContent = intention;
-  }
-}
-
-// Save intention
-function saveIntention(intention) {
-  chrome.storage.local.set({ todayIntention: intention }, () => {
-    showIntention(intention);
-  });
-}
+// Removed intention system - replaced by XP display
 
 // Get category color
 function getCategoryColor(category) {
@@ -876,7 +794,7 @@ function setupEventListeners() {
     });
   }
   
-  // SYNAPSE ANALYST button
+  // AI MIND ARCHITECT button
   if (elements.askCoach) {
     elements.askCoach.addEventListener('click', () => {
       chrome.windows.create({
@@ -897,25 +815,9 @@ function setupEventListeners() {
     });
   }
   
-  // Test evolution button
-  const testEvolveBtn = document.getElementById('testEvolveBtn');
-  if (testEvolveBtn) {
-    testEvolveBtn.addEventListener('click', () => {
-      // Simulate mission completion
-      onMissionComplete();
-    });
-  }
+  // Focus River button removed - feature deprecated
   
-  // Click on intention display to edit
-  if (elements.intentionDisplay) {
-    elements.intentionDisplay.addEventListener('click', () => {
-      showIntentionInput();
-      if (elements.intentionInput) {
-        elements.intentionInput.value = elements.intentionDisplay.textContent;
-        elements.intentionInput.select();
-      }
-    });
-  }
+  // Removed test evolution button and intention display click handler
 }
 
 // Utility functions

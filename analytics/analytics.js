@@ -404,6 +404,14 @@ async function drawCategoryChart() {
 
 // Setup event listeners
 function setupEventListeners() {
+  // Back button
+  const backBtn = document.getElementById('backBtn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      window.close();
+    });
+  }
+  
   elements.exportBtn.addEventListener('click', exportData);
   elements.clearBtn.addEventListener('click', clearData);
 }

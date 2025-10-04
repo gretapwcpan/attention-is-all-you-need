@@ -149,63 +149,143 @@ body::before {
   51%, 100% { opacity: 0; }
 }
 
-/* Intention Section */
-.intention-section {
-  padding: 20px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+/* XP Section - Main Display */
+.xp-section {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, 
+    rgba(255, 215, 0, 0.05) 0%, 
+    rgba(255, 165, 0, 0.08) 100%);
+  border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+  position: relative;
+  overflow: hidden;
 }
 
-.intention-label {
-  font-size: 11px;
+.xp-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 215, 0, 0.1), 
+    transparent);
+  animation: xp-shimmer 3s infinite;
+}
+
+@keyframes xp-shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.xp-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 10px;
+}
+
+.coin-icon-large {
+  filter: drop-shadow(0 0 10px #FFD700);
+  animation: coin-spin 3s linear infinite;
+}
+
+@keyframes coin-spin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+.xp-info {
+  text-align: center;
+}
+
+.xp-value-large {
+  font-family: 'Orbitron', monospace;
+  font-size: 32px;
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 
+    0 0 20px #FFD700,
+    0 0 40px rgba(255, 215, 0, 0.5);
+  line-height: 1;
+  animation: xp-pulse 2s ease-in-out infinite;
+}
+
+@keyframes xp-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.xp-label-large {
+  font-size: 12px;
+  color: #FFA500;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: var(--neon-purple);
-  text-shadow: 0 0 5px var(--neon-purple);
-  margin-bottom: 8px;
+  font-weight: 700;
+  margin-top: 5px;
 }
 
-#intentionInput {
-  width: 100%;
-  padding: 12px;
-  background: var(--bg-darker);
-  border: 1px solid var(--neon-purple);
-  color: var(--text-primary);
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 14px;
-  outline: none;
-  transition: all 0.3s;
-  box-shadow: inset 0 0 10px rgba(157, 0, 255, 0.1);
-}
-
-#intentionInput::placeholder {
-  color: var(--text-secondary);
-  opacity: 0.5;
-}
-
-#intentionInput:focus {
-  border-color: var(--neon-pink);
-  box-shadow: 
-    0 0 20px rgba(255, 0, 255, 0.3),
-    inset 0 0 10px rgba(255, 0, 255, 0.1);
-}
-
-#intentionDisplay {
-  padding: 12px;
-  background: var(--bg-darker);
-  border: 1px solid var(--neon-green);
-  color: var(--neon-green);
-  font-size: 14px;
-  text-shadow: 0 0 5px var(--neon-green);
+.xp-progress {
   margin-top: 8px;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 10px) 0,
-    100% 10px,
-    100% 100%,
-    10px 100%,
-    0 calc(100% - 10px)
-  );
+}
+
+.xp-level {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--neon-green);
+  text-shadow: 0 0 5px var(--neon-green);
+  text-align: center;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.xp-bar {
+  height: 12px;
+  background: var(--bg-darker);
+  border: 1px solid #FFD700;
+  border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FFD700, #FFA500);
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px #FFD700;
+  position: relative;
+}
+
+.xp-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent);
+  animation: progress-shine 2s linear infinite;
+}
+
+@keyframes progress-shine {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.xp-next {
+  font-size: 11px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-top: 5px;
+  font-style: italic;
 }
 
 /* Stats Grid */
@@ -286,9 +366,8 @@ body::before {
 
 /* Tamagotchi Pet Section */
 .tamagotchi-section {
-  padding: 20px;
+  padding: 15px 20px;
   background: var(--bg-panel);
-  border-top: 1px solid rgba(0, 255, 255, 0.2);
   border-bottom: 1px solid rgba(0, 255, 255, 0.2);
 }
 
@@ -718,6 +797,8 @@ body::before {
   transform: translateY(-2px);
 }
 
+/* btn-quaternary removed - Focus River feature deprecated */
+
 .btn:active {
   transform: scale(0.98);
 }
@@ -976,6 +1057,84 @@ body::before {
   right: 25%;
 }
 
+/* XP Display */
+.xp-display {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--bg-darker);
+  border: 2px solid #FFD700;
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+  animation: xp-glow 2s ease-in-out infinite;
+}
+
+@keyframes xp-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.8); }
+}
+
+.coin-icon {
+  filter: drop-shadow(0 0 5px #FFD700);
+  animation: coin-spin 3s linear infinite;
+}
+
+@keyframes coin-spin {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(360deg); }
+}
+
+.xp-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: #FFD700;
+  text-shadow: 0 0 10px #FFD700;
+}
+
+.xp-label {
+  font-size: 12px;
+  color: #FFA500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+/* XP Gain Animation */
+.xp-gain {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'Orbitron', monospace;
+  font-size: 32px;
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 0 0 20px #FFD700;
+  z-index: 10000;
+  pointer-events: none;
+  animation: xp-float-up 1.5s ease-out forwards;
+}
+
+@keyframes xp-float-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -70%) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(1);
+  }
+}
+
 /* Responsive */
 @media (max-width: 400px) {
   body {
@@ -985,5 +1144,15 @@ body::before {
   .container {
     border-left: none;
     border-right: none;
+  }
+  
+  .xp-display {
+    top: 10px;
+    right: 10px;
+    padding: 6px 12px;
+  }
+  
+  .xp-value {
+    font-size: 16px;
   }
 }

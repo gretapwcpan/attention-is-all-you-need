@@ -14,64 +14,25 @@
             <p class="tagline">Cognitive Analytics System</p>
         </header>
 
-        <!-- Intention Section -->
-        <section class="intention-section">
-            <div class="intention-label">[MISSION OBJECTIVE]</div>
-            <input type="text" id="intentionInput" placeholder="Enter today's mission..." style="display: none;">
-            <div id="intentionDisplay" style="display: none;"></div>
-        </section>
-
-        <!-- Stats Grid -->
-        <section class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">TIME ONLINE</div>
-                <div class="stat-value">
-                    <span id="totalTimeValue">0</span>
-                    <span class="stat-unit">min</span>
+        <!-- XP Display Section -->
+        <section class="xp-section">
+            <div class="xp-container">
+                <svg class="coin-icon-large" width="48" height="48" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+                    <circle cx="12" cy="12" r="8" fill="none" stroke="#FFA500" stroke-width="0.5"/>
+                    <text x="12" y="16" text-anchor="middle" fill="#FFA500" font-size="12" font-weight="bold">$</text>
+                </svg>
+                <div class="xp-info">
+                    <div class="xp-value-large" id="xpValue">0</div>
+                    <div class="xp-label-large">EXPERIENCE POINTS</div>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">FOCUS LEVEL</div>
-                <div class="stat-value">
-                    <span id="focusScore">--</span>
-                    <span class="stat-unit">%</span>
+            <div class="xp-progress">
+                <div class="xp-level" id="xpLevel">LEVEL 1</div>
+                <div class="xp-bar">
+                    <div class="xp-bar-fill" id="xpBarFill"></div>
                 </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">NODES</div>
-                <div class="stat-value">
-                    <span id="sitesCount">0</span>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">TOPICS</div>
-                <div class="stat-value">
-                    <span id="topicsCount">0</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- Focus State Display -->
-        <section class="focus-state-section">
-            <div class="focus-state-label">MIND STATE</div>
-            <div class="focus-state-display">
-                <div class="focus-indicator" id="currentFocus">
-                    <span class="focus-badge-large" id="focusBadge">[IDLE]</span>
-                </div>
-                <div class="focus-mini-bars">
-                    <div class="mini-bar">
-                        <span class="mini-label">DEEP</span>
-                        <div class="mini-bar-fill deep-fill" id="deepMini"></div>
-                    </div>
-                    <div class="mini-bar">
-                        <span class="mini-label">ACTIVE</span>
-                        <div class="mini-bar-fill active-fill" id="activeMini"></div>
-                    </div>
-                    <div class="mini-bar">
-                        <span class="mini-label">SCAN</span>
-                        <div class="mini-bar-fill scan-fill" id="scanMini"></div>
-                    </div>
-                </div>
+                <div class="xp-next" id="xpNext">10 XP to next level</div>
             </div>
         </section>
 
@@ -110,9 +71,47 @@
                         <span class="stat-value" id="knowledgeValue">0</span>
                     </div>
                 </div>
-                <div class="pet-progress">
-                    <span><span id="missionsCount">0</span> missions completed</span>
-                    <button class="evolve-btn" id="testEvolveBtn">Test +1</button>
+            </div>
+        </section>
+
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">TIME ONLINE</div>
+                <div class="stat-value">
+                    <span id="totalTimeValue">0</span>
+                    <span class="stat-unit">min</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">FOCUS LEVEL</div>
+                <div class="stat-value">
+                    <span id="focusScore">--</span>
+                    <span class="stat-unit">%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Focus State Display -->
+        <section class="focus-state-section">
+            <div class="focus-state-label">MIND STATE</div>
+            <div class="focus-state-display">
+                <div class="focus-indicator" id="currentFocus">
+                    <span class="focus-badge-large" id="focusBadge">[IDLE]</span>
+                </div>
+                <div class="focus-mini-bars">
+                    <div class="mini-bar">
+                        <span class="mini-label">DEEP</span>
+                        <div class="mini-bar-fill deep-fill" id="deepMini"></div>
+                    </div>
+                    <div class="mini-bar">
+                        <span class="mini-label">ACTIVE</span>
+                        <div class="mini-bar-fill active-fill" id="activeMini"></div>
+                    </div>
+                    <div class="mini-bar">
+                        <span class="mini-label">SCAN</span>
+                        <div class="mini-bar-fill scan-fill" id="scanMini"></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -123,7 +122,7 @@
                 [ ANALYTICS ]
             </button>
             <button class="btn btn-secondary" id="askCoach">
-                [ SYNAPSE ANALYST ]
+                [ AI MIND ARCHITECT ]
             </button>
             <button class="btn btn-tertiary" id="viewTodos">
                 [ MISSIONS ]

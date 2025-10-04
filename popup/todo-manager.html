@@ -10,6 +10,7 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
+            <button class="back-btn" id="backBtn">← BACK</button>
             <h1>MISSION CONTROL</h1>
             <p class="subtitle">Strategic Objective Management System</p>
         </header>
@@ -21,14 +22,21 @@
                 <span class="stat-label">MISSIONS</span>
             </div>
             <div class="stat">
-                <span class="stat-value" id="completedTodos">0</span>
+                <span class="stat-value" id="completedGoals">0</span>
                 <span class="stat-label">COMPLETED</span>
             </div>
             <div class="stat">
-                <span class="stat-value" id="progressPercent">0%</span>
+                <span class="stat-value" id="todayProgress">0%</span>
                 <span class="stat-label">PROGRESS</span>
             </div>
+            <div class="stat">
+                <span class="stat-value" id="streak">0 days</span>
+                <span class="stat-label">STREAK</span>
+            </div>
         </div>
+
+        <!-- Motivational Message -->
+        <div id="motivationalMessage" class="motivational-message"></div>
 
         <!-- Goal Input Section -->
         <div class="goal-input-section">
@@ -55,10 +63,51 @@
                 <div class="progress-fill" id="progressFill" style="width: 0%"></div>
             </div>
             <div class="progress-text" id="progressText">
-                SYSTEM EFFICIENCY: 0%
+                SYSTEM EFFICIENCY: <span id="progressPercent">0%</span>
             </div>
         </div>
+
+        <!-- Footer Actions -->
+        <div class="footer-actions">
+            <button id="viewAnalyticsBtn" class="footer-btn">📊 View Analytics</button>
+            <button id="clearCompletedBtn" class="footer-btn">🧹 Clear Completed</button>
+        </div>
     </div>
+
+    <!-- Goal Template -->
+    <template id="goalTemplate">
+        <div class="goal-item" data-goal-id="">
+            <span class="goal-title"></span>
+            <div class="goal-actions">
+                <button class="complete-goal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    COMPLETE
+                </button>
+                <button class="delete-goal">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Coin Celebration Container -->
+    <div id="coinCelebration" class="coin-celebration"></div>
+
+    <!-- SVG Definitions -->
+    <svg style="display: none;">
+        <defs>
+            <g id="goldCoin">
+                <circle cx="12" cy="12" r="10" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
+                <circle cx="12" cy="12" r="8" fill="none" stroke="#FFA500" stroke-width="0.5"/>
+                <text x="12" y="16" text-anchor="middle" fill="#FFA500" font-size="12" font-weight="bold">$</text>
+            </g>
+        </defs>
+    </svg>
 
     <script src="todo-manager.js"></script>
 </body>

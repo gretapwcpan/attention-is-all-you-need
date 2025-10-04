@@ -203,7 +203,8 @@ Response:`;
     const options = {
       systemPrompt: "You are an AI Reading Coach helping users understand and remember what they read. Please respond in English.",
       temperature: 0.8,
-      topK: 40
+      topK: 40,
+      outputLanguage: 'en'  // Explicitly specify English output
     };
 
     const response = await aiService.generateText(prompt, options);
@@ -309,7 +310,8 @@ Format as a numbered list.`;
       // Add language specification options
       const options = {
         systemPrompt: "You are a helpful analytics assistant providing actionable insights. Please respond in English.",
-        temperature: 0.7
+        temperature: 0.7,
+        outputLanguage: 'en'  // Explicitly specify English output
       };
       const response = await aiService.generateText(prompt, options);
       insights = response;
