@@ -1,22 +1,62 @@
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <!-- Minecraft-style teen creature -->
+  <!-- Teen Dragon - Medium sized, developing -->
+  
   <!-- Head -->
-  <rect x="16" y="12" width="32" height="28" fill="#ffcc99" stroke="#8b4513" stroke-width="2"/>
-  <!-- Hair -->
-  <rect x="16" y="12" width="32" height="8" fill="#4b3621"/>
-  <rect x="14" y="14" width="4" height="4" fill="#4b3621"/>
-  <rect x="46" y="14" width="4" height="4" fill="#4b3621"/>
-  <!-- Eyes -->
-  <rect x="22" y="24" width="6" height="4" fill="#000000"/>
-  <rect x="36" y="24" width="6" height="4" fill="#000000"/>
-  <!-- Cool expression -->
-  <rect x="26" y="32" width="12" height="2" fill="#8b4513"/>
-  <!-- Body -->
-  <rect x="20" y="40" width="24" height="20" fill="#2e8b57" stroke="#228b22" stroke-width="2"/>
-  <!-- Arms -->
-  <rect x="12" y="42" width="8" height="12" fill="#ffcc99" stroke="#8b4513" stroke-width="1"/>
-  <rect x="44" y="42" width="8" height="12" fill="#ffcc99" stroke="#8b4513" stroke-width="1"/>
-  <!-- Legs -->
-  <rect x="24" y="56" width="6" height="8" fill="#4169e1" stroke="#000080" stroke-width="1"/>
-  <rect x="34" y="56" width="6" height="8" fill="#4169e1" stroke="#000080" stroke-width="1"/>
+  <rect x="22" y="14" width="20" height="2" fill="#66BB6A"/>
+  <rect x="20" y="16" width="24" height="2" fill="#66BB6A"/>
+  <rect x="18" y="18" width="28" height="2" fill="#66BB6A"/>
+  <rect x="18" y="20" width="28" height="2" fill="#66BB6A"/>
+  <rect x="18" y="22" width="28" height="2" fill="#66BB6A"/>
+  <rect x="20" y="24" width="24" height="2" fill="#66BB6A"/>
+  
+  <!-- Eyes (more serious) -->
+  <rect x="22" y="19" width="3" height="2" fill="#FF0000"/>
+  <rect x="39" y="19" width="3" height="2" fill="#FF0000"/>
+  
+  <!-- Horns (bigger) -->
+  <rect x="18" y="12" width="2" height="4" fill="#4CAF50"/>
+  <rect x="44" y="12" width="2" height="4" fill="#4CAF50"/>
+  
+  <!-- Snout -->
+  <rect x="16" y="20" width="2" height="2" fill="#66BB6A"/>
+  <rect x="14" y="21" width="4" height="2" fill="#66BB6A"/>
+  
+  <!-- Body (athletic) -->
+  <rect x="20" y="26" width="24" height="2" fill="#66BB6A"/>
+  <rect x="18" y="28" width="28" height="2" fill="#66BB6A"/>
+  <rect x="18" y="30" width="28" height="2" fill="#66BB6A"/>
+  <rect x="18" y="32" width="28" height="2" fill="#66BB6A"/>
+  <rect x="20" y="34" width="24" height="2" fill="#66BB6A"/>
+  <rect x="22" y="36" width="20" height="2" fill="#66BB6A"/>
+  
+  <!-- Belly scales -->
+  <rect x="24" y="28" width="16" height="2" fill="#81C784"/>
+  <rect x="24" y="30" width="16" height="2" fill="#81C784"/>
+  <rect x="24" y="32" width="16" height="2" fill="#81C784"/>
+  
+  <!-- Wings (medium) -->
+  <rect x="12" y="26" width="6" height="2" fill="#4CAF50"/>
+  <rect x="10" y="28" width="8" height="2" fill="#4CAF50"/>
+  <rect x="8" y="30" width="10" height="2" fill="#4CAF50"/>
+  <rect x="10" y="32" width="8" height="2" fill="#4CAF50"/>
+  
+  <rect x="46" y="26" width="6" height="2" fill="#4CAF50"/>
+  <rect x="46" y="28" width="8" height="2" fill="#4CAF50"/>
+  <rect x="46" y="30" width="10" height="2" fill="#4CAF50"/>
+  <rect x="46" y="32" width="8" height="2" fill="#4CAF50"/>
+  
+  <!-- Tail (longer) -->
+  <rect x="44" y="34" width="4" height="2" fill="#66BB6A"/>
+  <rect x="46" y="36" width="4" height="2" fill="#66BB6A"/>
+  <rect x="48" y="38" width="4" height="2" fill="#66BB6A"/>
+  <rect x="50" y="40" width="4" height="2" fill="#66BB6A"/>
+  <rect x="48" y="42" width="6" height="2" fill="#66BB6A"/>
+  
+  <!-- Legs (stronger) -->
+  <rect x="22" y="38" width="4" height="4" fill="#4CAF50"/>
+  <rect x="38" y="38" width="4" height="4" fill="#4CAF50"/>
+  
+  <!-- Claws -->
+  <rect x="21" y="42" width="6" height="2" fill="#2E7D32"/>
+  <rect x="37" y="42" width="6" height="2" fill="#2E7D32"/>
 </svg>
