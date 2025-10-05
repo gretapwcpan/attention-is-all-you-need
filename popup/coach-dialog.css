@@ -9,15 +9,15 @@
 }
 
 :root {
-  /* Terminal Color Palette */
-  --terminal-green: #00ff00;
-  --terminal-green-dim: #00aa00;
-  --terminal-amber: #ffaa00;
-  --terminal-red: #ff0000;
-  --terminal-cyan: #00ffff;
-  --terminal-bg: #000000;
-  --terminal-bg-alt: #0a0a0a;
-  --matrix-green: #00ff41;
+  /* Eye-Friendly Terminal Color Palette */
+  --terminal-green: #4ADE80;      /* Soft mint green instead of harsh #00ff00 */
+  --terminal-green-dim: #059669;  /* Warmer forest green instead of #00aa00 */
+  --terminal-amber: #FBB040;      /* Softer amber instead of harsh #ffaa00 */
+  --terminal-red: #F87171;        /* Softer red instead of pure #ff0000 */
+  --terminal-cyan: #67E8F9;       /* Soft cyan instead of harsh #00ffff */
+  --terminal-bg: #0F1419;         /* Dark charcoal instead of pure black */
+  --terminal-bg-alt: #1A1F2E;     /* Slightly lighter dark instead of #0a0a0a */
+  --matrix-green: #10B981;        /* Softer emerald instead of #00ff41 */
 }
 
 body {
@@ -53,7 +53,7 @@ body {
   font-family: 'Courier New', monospace;
   font-size: 14px;
   color: var(--matrix-green);
-  text-shadow: 0 0 5px var(--matrix-green);
+  text-shadow: 0 0 2px var(--matrix-green);  /* Reduced from 5px */
   animation: matrix-fall linear infinite;
   white-space: nowrap;
   user-select: none;
@@ -75,7 +75,7 @@ body::before {
   bottom: 0;
   background: linear-gradient(
     transparent 50%,
-    rgba(0, 255, 0, 0.03) 50%
+    rgba(74, 222, 128, 0.02) 50%  /* Even softer scan lines */
   );
   background-size: 100% 4px;
   pointer-events: none;
@@ -107,8 +107,8 @@ body::before {
   z-index: 10;
   border: 1px solid var(--terminal-green);
   box-shadow: 
-    0 0 20px rgba(0, 255, 0, 0.5),
-    inset 0 0 20px rgba(0, 255, 0, 0.05);
+    0 0 10px rgba(74, 222, 128, 0.3),  /* Softer, reduced glow */
+    inset 0 0 10px rgba(74, 222, 128, 0.03);
   animation: flicker 10s infinite;
 }
 
@@ -128,7 +128,7 @@ body::before {
   color: var(--terminal-green);
   text-align: center;
   font-family: 'VT323', monospace;
-  text-shadow: 0 0 10px var(--terminal-green);
+  text-shadow: 0 0 3px var(--terminal-green);  /* Reduced glow */
   margin-bottom: 10px;
 }
 
@@ -143,7 +143,7 @@ body::before {
 .coach-status {
   font-size: 14px;
   color: var(--terminal-amber);
-  text-shadow: 0 0 5px var(--terminal-amber);
+  text-shadow: 0 0 2px var(--terminal-amber);  /* Reduced glow */
 }
 
 .coach-status::before {
@@ -187,7 +187,7 @@ body::before {
 
 .coach-messages::-webkit-scrollbar-thumb {
   background: var(--terminal-green);
-  box-shadow: 0 0 5px var(--terminal-green);
+  box-shadow: 0 0 2px var(--terminal-green);  /* Reduced glow */
 }
 
 /* Message Styles */
@@ -217,7 +217,7 @@ body::before {
   color: var(--terminal-cyan);
   font-weight: normal;
   display: inline;
-  text-shadow: 0 0 5px var(--terminal-cyan);
+  text-shadow: 0 0 2px var(--terminal-cyan);  /* Reduced glow */
 }
 
 .message.user {
@@ -260,7 +260,7 @@ body::before {
 .typing-indicator::before {
   content: 'ai@neural-net:~$ ';
   color: var(--terminal-cyan);
-  text-shadow: 0 0 5px var(--terminal-cyan);
+  text-shadow: 0 0 2px var(--terminal-cyan);  /* Reduced glow */
 }
 
 .typing-indicator::after {
@@ -296,7 +296,7 @@ body::before {
   font-family: 'VT323', monospace;
   font-size: 18px;
   padding-right: 5px;
-  text-shadow: 0 0 5px var(--terminal-green);
+  text-shadow: 0 0 2px var(--terminal-green);  /* Reduced glow */
 }
 
 #userInput {
@@ -308,7 +308,7 @@ body::before {
   font-family: 'VT323', monospace;
   font-size: 18px;
   outline: none;
-  text-shadow: 0 0 3px var(--terminal-amber);
+  text-shadow: 0 0 1px var(--terminal-amber);  /* Very subtle glow */
 }
 
 #userInput::placeholder {
@@ -327,13 +327,13 @@ body::before {
   cursor: pointer;
   transition: all 0.2s;
   margin-left: 10px;
-  text-shadow: 0 0 5px var(--terminal-green);
+  text-shadow: 0 0 2px var(--terminal-green);  /* Reduced glow */
 }
 
 #sendButton:hover {
   background: var(--terminal-green);
   color: var(--terminal-bg);
-  box-shadow: 0 0 15px var(--terminal-green);
+  box-shadow: 0 0 8px var(--terminal-green);  /* Softer hover glow */
 }
 
 #sendButton:active {
@@ -360,7 +360,7 @@ body::before {
   text-transform: uppercase;
   cursor: pointer;
   transition: all 0.2s;
-  text-shadow: 0 0 3px currentColor;
+  text-shadow: 0 0 1px currentColor;  /* Very subtle glow */
   position: relative;
   overflow: hidden;
 }
@@ -372,7 +372,7 @@ body::before {
 .action-btn:hover {
   background: var(--terminal-green);
   color: var(--terminal-bg);
-  box-shadow: 0 0 10px var(--terminal-green);
+  box-shadow: 0 0 5px var(--terminal-green);  /* Softer hover glow */
   border-color: var(--terminal-green);
 }
 
@@ -387,7 +387,7 @@ body::before {
 
 .action-btn.secondary:hover {
   background: var(--terminal-red);
-  box-shadow: 0 0 10px var(--terminal-red);
+  box-shadow: 0 0 5px var(--terminal-red);  /* Softer hover glow */
 }
 
 /* Glitch Effect for Errors */
@@ -419,7 +419,7 @@ body::before {
 
 .message.success {
   color: var(--terminal-green);
-  text-shadow: 0 0 10px var(--terminal-green);
+  text-shadow: 0 0 3px var(--terminal-green);  /* Reduced glow */
 }
 
 .message.success::before {
