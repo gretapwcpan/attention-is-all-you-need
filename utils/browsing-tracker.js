@@ -1,9 +1,27 @@
 // Browsing Tracker - Core analytics functionality
 
+import { getKnowledgeGraph } from './knowledge-graph.js';
+import { getAISummarizer } from './ai-summarizer.js';
+
 export class BrowsingTracker {
   constructor() {
     this.sessions = [];
     this.domainStats = new Map();
+    this.knowledgeGraph = null;
+    this.aiSummarizer = null;
+    this.initializeServices();
+  }
+
+  async initializeServices() {
+    try {
+      this.knowledgeGraph = getKnowledgeGraph();
+      this.aiSummarizer = getAISummarizer();
+      await this.knowledgeGraph.initialize();
+      await this.aiSummarizer.initialize();
+      console.log('Knowledge Graph and AI Summarizer initialized in BrowsingTracker');
+    } catch (error) {
+      console.error('Error initializing services:', error);
+    }
   }
 
   async addSession(sessionData) {
@@ -31,6 +49,57 @@ export class BrowsingTracker {
       
       // Update domain stats
       this.updateDomainStats(sessionData);
+      
+      // TEMPORARILY REDUCED: Process for knowledge graph if session is long enough (5+ seconds for testing)
+      const KNOWLEDGE_THRESHOLD = 5000; // 5 seconds for testing (was 120000 for 2 minutes)
+      console.log(`Knowledge extraction check: duration=${sessionData.duration}ms, threshold=${KNOWLEDGE_THRESHOLD}ms, qualifies=${sessionData.duration >= KNOWLEDGE_THRESHOLD}`);
+      
+      if (sessionData.duration >= KNOWLEDGE_THRESHOLD && this.knowledgeGraph && this.aiSummarizer) {
+        try {
+          console.log('✨ Processing session for knowledge graph:', sessionData.title);
+          console.log('  Duration:', Math.round(sessionData.duration / 1000), 'seconds');
+          console.log('  Has content:', !!sessionData.content);
+          
+          // Prepare page data for knowledge graph
+          const pageData = {
+            url: sessionData.url,
+            title: sessionData.title,
+            content: sessionData.content || '',
+            timeSpent: sessionData.duration,
+            category: sessionData.category || 'General'
+          };
+          
+          // Generate AI summary if available
+          let summary = null;
+          if (this.aiSummarizer && this.aiSummarizer.shouldSummarize(pageData)) {
+            summary = await this.aiSummarizer.summarizePage(pageData);
+          } else {
+            // Use a simple fallback summary
+            summary = {
+              text: `Read article about ${sessionData.title} in ${sessionData.category || 'General'} category.`
+            };
+          }
+          
+          // Process for knowledge graph
+          const knowledgeNode = await this.knowledgeGraph.processPage(pageData, summary);
+          console.log('✅ Knowledge node created:', knowledgeNode.id);
+          console.log('  Concepts extracted:', knowledgeNode.concepts);
+          
+        } catch (error) {
+          console.error('❌ Error processing session for knowledge graph:', error);
+          // Don't fail the whole session addition if knowledge graph fails
+        }
+      } else {
+        if (sessionData.duration < KNOWLEDGE_THRESHOLD) {
+          console.log(`⏱️ Session too short for knowledge extraction: ${Math.round(sessionData.duration / 1000)}s < ${KNOWLEDGE_THRESHOLD / 1000}s required`);
+        }
+        if (!this.knowledgeGraph) {
+          console.log('⚠️ Knowledge graph not initialized');
+        }
+        if (!this.aiSummarizer) {
+          console.log('⚠️ AI summarizer not initialized');
+        }
+      }
       
       return sessionData;
     } catch (error) {

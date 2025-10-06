@@ -17,7 +17,13 @@
             </div>
         </header>
 
-        <div class="dashboard">
+        <!-- Tab Navigation -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="analytics">Analytics</button>
+            <button class="tab-btn" data-tab="knowledge">Knowledge Graph</button>
+        </nav>
+
+        <div class="dashboard" id="analyticsTab">
             <!-- Summary Cards -->
             <section class="summary-cards">
                 <div class="card">
@@ -108,8 +114,73 @@
                 </div>
             </section>
         </div>
+
+        <!-- Knowledge Graph Tab -->
+        <div class="dashboard" id="knowledgeTab" style="display: none;">
+            <!-- Knowledge Summary Cards -->
+            <section class="summary-cards">
+                <div class="card">
+                    <div class="card-label">Knowledge Nodes</div>
+                    <div class="card-value" id="nodeCount">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Concepts Learned</div>
+                    <div class="card-value" id="conceptCount">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Connections</div>
+                    <div class="card-value" id="connectionCount">0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Learning Streak</div>
+                    <div class="card-value" id="learningStreak">0 days</div>
+                </div>
+            </section>
+
+            <!-- Search Knowledge -->
+            <section class="knowledge-search">
+                <h2>Search Your Knowledge</h2>
+                <div class="search-container">
+                    <input type="text" id="knowledgeSearch" placeholder="Search concepts, articles, or topics..." class="search-input">
+                    <button id="searchBtn" class="btn btn-primary">Search</button>
+                </div>
+                <div id="searchResults" class="search-results"></div>
+            </section>
+
+            <!-- Learning Timeline -->
+            <section class="chart-section">
+                <h2>Learning Timeline</h2>
+                <div id="learningTimeline" class="timeline-container">
+                    <div class="empty-state">Your learning journey will appear here.</div>
+                </div>
+            </section>
+
+            <!-- Top Concepts -->
+            <section class="list-section">
+                <h2>Top Concepts</h2>
+                <div id="topConcepts" class="concept-cloud">
+                    <div class="empty-state">Concepts will appear as you read articles.</div>
+                </div>
+            </section>
+
+            <!-- Recent Knowledge Nodes -->
+            <section class="list-section">
+                <h2>Recent Learning</h2>
+                <div id="recentNodes" class="list-container">
+                    <div class="empty-state">Your recent learning will appear here.</div>
+                </div>
+            </section>
+
+            <!-- Learning Insights -->
+            <section class="insights-section">
+                <h2>Learning Insights</h2>
+                <div id="learningInsights" class="insights-container">
+                    <div class="empty-state">Insights about your learning will appear here.</div>
+                </div>
+            </section>
+        </div>
     </div>
 
-    <script src="analytics.js"></script>
+    <script type="module" src="analytics.js"></script>
 </body>
 </html>

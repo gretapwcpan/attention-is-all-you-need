@@ -3,6 +3,7 @@
 // Import AI and character modules
 import { getAIService } from '../utils/ai-service.js';
 import { getAISummarizer } from '../utils/ai-summarizer.js';
+import { BrowsingTracker } from '../utils/browsing-tracker.js';
 
 // Note: TodoAIMapper cannot be dynamically imported in service workers
 // We'll handle it through message passing instead
@@ -11,15 +12,17 @@ import { getAISummarizer } from '../utils/ai-summarizer.js';
 let activeTab = null;
 let sessionStartTime = null;
 let sessionTimer = null;
+let sessionContent = null; // Store content for current session
 
 // Initialize AI and summarizer services
 let aiService = null;
 let aiSummarizer = null;
 let todoMapperAvailable = false;
+let browsingTracker = null;
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log('Attention Is All You Need installed');
+  console.log('🚀 Attention Is All You Need installed');
   
   // Initialize storage with default data
   await initializeStorage();
@@ -30,6 +33,14 @@ chrome.runtime.onInstalled.addListener(async () => {
   // Set up alarms for periodic data processing
   chrome.alarms.create('processData', { periodInMinutes: 5 });
   chrome.alarms.create('dailyReset', { when: getNextMidnight() });
+  
+  console.log('✅ Extension initialization complete');
+});
+
+// Also initialize on startup
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('🔄 Extension starting up');
+  await initializeAIServices();
 });
 
 // Initialize AI services
@@ -45,6 +56,10 @@ async function initializeAIServices() {
     // Initialize summarizer
     await aiSummarizer.initialize();
     console.log('AI Summarizer initialized');
+    
+    // Initialize BrowsingTracker
+    browsingTracker = new BrowsingTracker();
+    console.log('BrowsingTracker initialized');
     
     // Mark todo mapper as available (we'll handle it through message passing)
     // Service workers cannot use dynamic import(), so we'll skip direct initialization
@@ -110,31 +125,44 @@ async function setInStorage(key, value) {
 
 // Handle tab activation
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  console.log('📍 Tab activated:', activeInfo.tabId);
+  
   // End previous session
   if (activeTab && sessionStartTime) {
+    console.log('  ↳ Ending previous session for tab:', activeTab.id);
     await endSession();
   }
   
   // Start new session
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
+    console.log('  ↳ Tab info:', { id: tab.id, url: tab.url, title: tab.title });
+    
     if (tab && tab.url) {
       startSession(tab);
+    } else {
+      console.log('  ↳ Tab has no URL, skipping');
     }
   } catch (error) {
-    console.error('Error getting tab:', error);
+    console.error('❌ Error getting tab:', error);
   }
 });
 
 // Handle tab updates
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab && tab.active) {
-    // End previous session and start new one
-    if (activeTab && sessionStartTime) {
-      await endSession();
-    }
-    if (tab.url) {
-      startSession(tab);
+  if (changeInfo.status === 'complete') {
+    console.log('🔄 Tab updated:', tabId, 'Status:', changeInfo.status, 'Active:', tab.active);
+    
+    if (tab && tab.active) {
+      // End previous session and start new one
+      if (activeTab && sessionStartTime) {
+        console.log('  ↳ Ending session for URL change');
+        await endSession();
+      }
+      if (tab.url) {
+        console.log('  ↳ Starting new session for:', tab.url);
+        startSession(tab);
+      }
     }
   }
 });
@@ -162,7 +190,10 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 
 // Start a browsing session
 function startSession(tab) {
+  console.log('🎬 Starting session for:', tab.url);
+  
   if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+    console.log('  ↳ Skipping - internal URL');
     return;
   }
   
@@ -175,6 +206,16 @@ function startSession(tab) {
     };
     
     sessionStartTime = Date.now();
+    sessionContent = null; // Reset content for new session
+    
+    console.log('  ↳ Session started:', {
+      tabId: activeTab.id,
+      domain: activeTab.domain,
+      startTime: new Date(sessionStartTime).toLocaleTimeString()
+    });
+    
+    // Try to get page content immediately
+    getPageContent(tab.id);
     
     // Start session timer to track active time
     clearInterval(sessionTimer);
@@ -183,25 +224,56 @@ function startSession(tab) {
       try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tabs && tabs.length > 0 && activeTab && tabs[0].id !== activeTab.id) {
+          console.log('  ↳ Tab no longer active, ending session');
           await endSession();
         }
+        
+        // Periodically try to get content if we don't have it yet
+        if (!sessionContent && activeTab) {
+          getPageContent(activeTab.id);
+        }
       } catch (error) {
-        console.error('Error checking active tab:', error);
+        console.error('❌ Error in session timer:', error);
       }
-    }, 1000);
+    }, 5000); // Check every 5 seconds
   } catch (error) {
-    console.error('Error starting session:', error);
+    console.error('❌ Error starting session:', error);
+  }
+}
+
+// Get page content from content script
+async function getPageContent(tabId) {
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { 
+      action: 'getPageContent' 
+    }).catch(() => null);
+    
+    if (response && response.content) {
+      sessionContent = response.content;
+      console.log('Page content captured for knowledge extraction');
+    }
+  } catch (error) {
+    // Content script might not be ready yet, will retry
   }
 }
 
 // End a browsing session
 async function endSession() {
-  if (!activeTab || !sessionStartTime) return;
+  if (!activeTab || !sessionStartTime) {
+    console.log('🛑 No active session to end');
+    return;
+  }
   
   const sessionDuration = Date.now() - sessionStartTime;
+  const durationSeconds = Math.round(sessionDuration / 1000);
+  console.log('🏁 Ending session:', {
+    url: activeTab.url,
+    duration: durationSeconds + ' seconds',
+    durationMs: sessionDuration + 'ms'
+  });
   
-  // Only track sessions longer than 3 seconds
-  if (sessionDuration > 3000) {
+  // TEMPORARILY REDUCED: Track sessions longer than 1 second for debugging
+  if (sessionDuration > 1000) {
     const session = {
       url: activeTab.url,
       title: activeTab.title,
@@ -210,23 +282,50 @@ async function endSession() {
       endTime: Date.now(),
       duration: sessionDuration,
       category: categorizeUrl(activeTab.url),
-      focusType: determineFocusType(sessionDuration)
+      focusType: determineFocusType(sessionDuration),
+      content: sessionContent || '' // Include captured content
     };
     
+    console.log('  ↳ Session qualifies for tracking');
+    console.log('  ↳ Duration details:', {
+      startTime: new Date(session.startTime).toLocaleTimeString(),
+      endTime: new Date(session.endTime).toLocaleTimeString(),
+      durationMs: session.duration,
+      durationSeconds: Math.round(session.duration / 1000)
+    });
+    
     // Save session data
-    await addSession(session);
+    const saved = await addSession(session);
+    console.log('  ↳ Session saved to storage:', saved);
     
     // Update today's analytics
     await updateAnalytics(session);
+    console.log('  ↳ Analytics updated');
+    
+    // Use BrowsingTracker to process for knowledge graph
+    if (browsingTracker) {
+      try {
+        console.log('  ↳ 🔄 Sending to BrowsingTracker for knowledge extraction...');
+        await browsingTracker.addSession(session);
+        console.log('  ↳ ✅ BrowsingTracker processing complete');
+      } catch (error) {
+        console.error('  ↳ ❌ Error processing session with BrowsingTracker:', error);
+      }
+    } else {
+      console.log('  ↳ ⚠️ BrowsingTracker not initialized');
+    }
     
     // Try to generate a summary for this session
     await tryGenerateSummary(session);
+  } else {
+    console.log('  ↳ Session too short, not tracking:', Math.round(sessionDuration / 1000) + ' seconds');
   }
   
   // Clear session data
   clearInterval(sessionTimer);
   activeTab = null;
   sessionStartTime = null;
+  sessionContent = null;
 }
 
 // Try to generate a summary for the session
@@ -357,6 +456,8 @@ async function addSession(session) {
   const today = new Date().toDateString();
   const sessionsKey = `sessions_${today}`;
   
+  console.log('💾 Adding session to storage with key:', sessionsKey);
+  
   const sessions = await getFromStorage(sessionsKey) || [];
   sessions.push(session);
   
@@ -365,7 +466,10 @@ async function addSession(session) {
     sessions.shift();
   }
   
-  await setInStorage(sessionsKey, sessions);
+  const success = await setInStorage(sessionsKey, sessions);
+  console.log('  ↳ Storage write success:', success, 'Total sessions today:', sessions.length);
+  
+  return success;
 }
 
 // Update analytics data
