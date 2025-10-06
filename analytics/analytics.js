@@ -1,6 +1,7 @@
 // Analytics Dashboard JavaScript
 import { KnowledgeStorage } from '../utils/knowledge-storage.js';
 import { KnowledgeGraph } from '../utils/knowledge-graph.js';
+import { NetworkVisualizer } from '../utils/network-visualizer.js';
 
 // DOM Elements
 const elements = {
@@ -30,6 +31,7 @@ const elements = {
 // Initialize Knowledge modules
 const knowledgeStorage = new KnowledgeStorage();
 const knowledgeGraph = new KnowledgeGraph();
+let networkVisualizer = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -37,6 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadKnowledgeGraph();
   setupEventListeners();
   setupTabNavigation();
+  setupGraphControls();
   drawCharts();
 });
 
@@ -524,6 +527,15 @@ function showEmptyState() {
 // Load Knowledge Graph data
 async function loadKnowledgeGraph() {
   try {
+    // Initialize network visualizer if not already done
+    if (!networkVisualizer) {
+      networkVisualizer = new NetworkVisualizer('knowledgeNetwork');
+      await networkVisualizer.initialize();
+    } else {
+      // Refresh the graph
+      await networkVisualizer.refresh();
+    }
+    
     // Get storage stats
     const stats = await knowledgeStorage.getStats();
     
@@ -812,6 +824,40 @@ async function searchKnowledge() {
   } catch (error) {
     console.error('Error searching knowledge:', error);
     elements.searchResults.innerHTML = '<div class="error">Search failed. Please try again.</div>';
+  }
+}
+
+// Setup graph controls
+function setupGraphControls() {
+  // Reset view button
+  const resetGraphBtn = document.getElementById('resetGraphBtn');
+  if (resetGraphBtn) {
+    resetGraphBtn.addEventListener('click', () => {
+      if (networkVisualizer) {
+        networkVisualizer.resetView();
+      }
+    });
+  }
+  
+  // Toggle physics button
+  const togglePhysicsBtn = document.getElementById('togglePhysicsBtn');
+  if (togglePhysicsBtn) {
+    togglePhysicsBtn.addEventListener('click', () => {
+      if (networkVisualizer) {
+        networkVisualizer.togglePhysics();
+        togglePhysicsBtn.textContent = networkVisualizer.physicsEnabled ? 'Disable Physics' : 'Enable Physics';
+      }
+    });
+  }
+  
+  // Filter dropdown
+  const graphFilter = document.getElementById('graphFilter');
+  if (graphFilter) {
+    graphFilter.addEventListener('change', (e) => {
+      if (networkVisualizer) {
+        networkVisualizer.filterByTime(e.target.value);
+      }
+    });
   }
 }
 

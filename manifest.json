@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Attention Is All You Need - Know Where Your Focus Goes",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "Track and analyze your online attention patterns to align with your learning and productivity goals",
   "icons": {
     "16": "icons/icon.png",
@@ -39,6 +39,16 @@
       "matches": ["<all_urls>"],
       "js": ["content/content-script.js"],
       "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "libs/vis-network.min.js",
+        "libs/vis-network.min.css",
+        "utils/vis-loader.js"
+      ],
+      "matches": ["<all_urls>"]
     }
   ],
   "minimum_chrome_version": "127"

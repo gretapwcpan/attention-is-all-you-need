@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus Forge Matrix</title>
     <link rel="stylesheet" href="analytics.css">
+    <!-- Vis.js Network Graph Library (Local) -->
+    <link href="../libs/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <script type="text/javascript" src="../libs/vis-network.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -145,6 +148,24 @@
                     <button id="searchBtn" class="btn btn-primary">Search</button>
                 </div>
                 <div id="searchResults" class="search-results"></div>
+            </section>
+
+            <!-- Knowledge Network Graph -->
+            <section class="chart-section">
+                <h2>Knowledge Network</h2>
+                <div class="graph-controls">
+                    <button class="graph-btn" id="resetGraphBtn">Reset View</button>
+                    <button class="graph-btn" id="togglePhysicsBtn">Toggle Physics</button>
+                    <select id="graphFilter" class="graph-filter">
+                        <option value="all">All Nodes</option>
+                        <option value="today">Today</option>
+                        <option value="week">This Week</option>
+                        <option value="month">This Month</option>
+                    </select>
+                </div>
+                <div id="knowledgeNetwork" class="network-container" style="height: 500px; border: 1px solid #333; border-radius: 8px; background: #0a0a0a;">
+                    <div class="empty-state">Your knowledge graph will appear here.</div>
+                </div>
             </section>
 
             <!-- Learning Timeline -->

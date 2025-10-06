@@ -249,11 +249,19 @@ async function getPageContent(tabId) {
     }).catch(() => null);
     
     if (response && response.content) {
-      sessionContent = response.content;
-      console.log('Page content captured for knowledge extraction');
+      sessionContent = response;  // Store the entire response object
+      console.log('✅ Page content captured for knowledge extraction:', {
+        hasContent: !!response.content,
+        contentLength: response.content.length,
+        hasHeadings: !!response.headings,
+        title: response.title
+      });
+    } else {
+      console.log('⚠️ No content received from content script');
     }
   } catch (error) {
     // Content script might not be ready yet, will retry
+    console.log('⏳ Content script not ready, will retry');
   }
 }
 
@@ -283,7 +291,7 @@ async function endSession() {
       duration: sessionDuration,
       category: categorizeUrl(activeTab.url),
       focusType: determineFocusType(sessionDuration),
-      content: sessionContent || '' // Include captured content
+      content: sessionContent ? sessionContent.content || '' : '' // Extract content from response object
     };
     
     console.log('  ↳ Session qualifies for tracking');

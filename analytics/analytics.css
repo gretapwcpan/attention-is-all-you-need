@@ -813,3 +813,75 @@ body::after {
   background: #666;
   color: var(--text-primary);
 }
+
+/* Graph Controls */
+.graph-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+  align-items: center;
+}
+
+.graph-btn {
+  padding: 8px 16px;
+  background: var(--bg-darker);
+  border: 2px solid var(--neon-purple);
+  color: var(--neon-purple);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.graph-btn:hover {
+  background: var(--neon-purple);
+  color: var(--bg-dark);
+  box-shadow: 0 0 15px var(--neon-purple);
+}
+
+.graph-filter {
+  padding: 8px 12px;
+  background: var(--bg-darker);
+  border: 2px solid #444;
+  color: var(--text-primary);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.graph-filter:focus {
+  outline: none;
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 10px rgba(157, 0, 255, 0.3);
+}
+
+/* Network Container */
+.network-container {
+  position: relative;
+  width: 100%;
+  min-height: 500px;
+  background: linear-gradient(135deg, 
+    rgba(10, 10, 10, 0.95) 0%, 
+    rgba(20, 10, 30, 0.95) 100%);
+  border: 2px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Vis.js Network Overrides */
+.vis-network {
+  background: transparent !important;
+}
+
+.vis-tooltip {
+  background: var(--bg-panel) !important;
+  border: 2px solid var(--neon-purple) !important;
+  color: var(--text-primary) !important;
+  font-family: 'Share Tech Mono', monospace !important;
+  padding: 10px !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 20px rgba(157, 0, 255, 0.5) !important;
+}
