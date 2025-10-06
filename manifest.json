@@ -3,6 +3,12 @@
   "name": "Attention Is All You Need - Know Where Your Focus Goes",
   "version": "2.0.0",
   "description": "Track and analyze your online attention patterns to align with your learning and productivity goals",
+  "icons": {
+    "16": "icons/icon.png",
+    "32": "icons/icon.png",
+    "48": "icons/icon.png",
+    "128": "icons/icon.png"
+  },
   "permissions": [
     "storage",
     "tabs",
@@ -20,7 +26,13 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon.png",
+      "32": "icons/icon.png",
+      "48": "icons/icon.png",
+      "128": "icons/icon.png"
+    }
   },
   "content_scripts": [
     {
