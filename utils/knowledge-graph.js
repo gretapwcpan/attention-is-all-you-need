@@ -76,6 +76,12 @@ export class KnowledgeGraph {
    * Extract key concepts from page content
    */
   async extractConcepts(pageData, summary) {
+    // Check if AI service is healthy before attempting
+    if (!this.aiService.isHealthy || !this.aiService.isHealthy()) {
+      console.log('AI service not healthy, using fallback concept extraction');
+      return this.extractFallbackConcepts(pageData);
+    }
+    
     try {
       const summaryText = typeof summary === 'string' ? summary : summary.text;
       
@@ -227,6 +233,12 @@ Example output: ["React Hooks", "State Management", "useEffect", "Component Life
    * Analyze connection between two knowledge nodes
    */
   async analyzeConnection(previousNode, currentSummary, currentConcepts) {
+    // Check if AI service is healthy before attempting
+    if (!this.aiService.isHealthy || !this.aiService.isHealthy()) {
+      console.log('AI service not healthy, using fallback connection analysis');
+      return this.analyzeFallbackConnection(previousNode, currentConcepts);
+    }
+    
     try {
       const summaryText = typeof currentSummary === 'string' ? currentSummary : currentSummary.text;
       

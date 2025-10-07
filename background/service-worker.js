@@ -65,11 +65,23 @@ async function initializeAIServices() {
     if (!browsingTracker) {
       try {
         browsingTracker = new BrowsingTracker();
-        await browsingTracker.initializeServices();
-        console.log('✅ BrowsingTracker initialized successfully');
+        const initResult = await browsingTracker.initializeServices();
+        if (initResult) {
+          console.log('✅ BrowsingTracker initialized successfully');
+        } else {
+          console.log('⚠️ BrowsingTracker initialized with warnings');
+        }
       } catch (error) {
         console.error('❌ Failed to initialize BrowsingTracker:', error);
-        browsingTracker = null;
+        // Don't set to null - keep the instance even if initialization had issues
+        // browsingTracker = null;
+      }
+    } else {
+      console.log('ℹ️ BrowsingTracker already exists, re-initializing services');
+      try {
+        await browsingTracker.initializeServices();
+      } catch (error) {
+        console.error('⚠️ Error re-initializing BrowsingTracker services:', error);
       }
     }
     
@@ -214,7 +226,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 });
 
 // Start a browsing session
-function startSession(tab) {
+async function startSession(tab) {
   console.log('🎬 Starting session for:', tab.url);
   
   if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
@@ -239,8 +251,8 @@ function startSession(tab) {
       startTime: new Date(sessionStartTime).toLocaleTimeString()
     });
     
-    // Try to get page content immediately
-    getPageContent(tab.id);
+    // Try to get page content immediately with retries
+    await getPageContent(tab.id);
     
     // Start session timer to track active time
     clearInterval(sessionTimer);
@@ -255,7 +267,7 @@ function startSession(tab) {
         
         // Periodically try to get content if we don't have it yet
         if (!sessionContent && activeTab) {
-          getPageContent(activeTab.id);
+          await getPageContent(activeTab.id, 1); // Single retry in timer
         }
       } catch (error) {
         console.error('❌ Error in session timer:', error);
@@ -266,28 +278,91 @@ function startSession(tab) {
   }
 }
 
-// Get page content from content script
-async function getPageContent(tabId) {
-  try {
-    const response = await chrome.tabs.sendMessage(tabId, { 
-      action: 'getPageContent' 
-    }).catch(() => null);
-    
-    if (response && response.content) {
-      sessionContent = response;  // Store the entire response object
-      console.log('✅ Page content captured for knowledge extraction:', {
-        hasContent: !!response.content,
-        contentLength: response.content.length,
-        hasHeadings: !!response.headings,
-        title: response.title
-      });
-    } else {
-      console.log('⚠️ No content received from content script');
+// Get page content from content script with retries
+async function getPageContent(tabId, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // First check if tab still exists
+      const tab = await chrome.tabs.get(tabId).catch(() => null);
+      if (!tab) {
+        console.log('Tab no longer exists');
+        return null;
+      }
+      
+      // Skip chrome:// and extension pages
+      if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://'))) {
+        console.log('Skipping internal URL');
+        return null;
+      }
+      
+      // Try to inject content script if not already present
+      if (attempt === 0) {
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ['content/content-script.js']
+          });
+          // Wait a bit for script to initialize
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (e) {
+          // Script might already be injected or page doesn't allow injection
+          console.log('Content script injection attempt:', e.message);
+        }
+      }
+      
+      // Try to get content
+      const response = await chrome.tabs.sendMessage(tabId, { 
+        action: 'getPageContent' 
+      }).catch(() => null);
+      
+      if (response && response.content) {
+        sessionContent = response;  // Store the entire response object
+        console.log('✅ Page content captured for knowledge extraction:', {
+          hasContent: !!response.content,
+          contentLength: response.content.length,
+          hasHeadings: !!response.headings,
+          title: response.title,
+          attempt: attempt + 1
+        });
+        return response;
+      } else {
+        console.log(`⚠️ No content received from content script (attempt ${attempt + 1}/${maxRetries})`);
+        if (attempt < maxRetries - 1) {
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    } catch (error) {
+      console.log(`⏳ Content script error (attempt ${attempt + 1}/${maxRetries}):`, error.message);
+      if (attempt < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
-  } catch (error) {
-    // Content script might not be ready yet, will retry
-    console.log('⏳ Content script not ready, will retry');
   }
+  
+  // If all retries failed, try to extract basic content from tab info
+  try {
+    const tab = await chrome.tabs.get(tabId).catch(() => null);
+    if (tab && tab.title && tab.url) {
+      const fallbackContent = {
+        content: tab.title,  // Use title as minimal content
+        headings: [tab.title],
+        title: tab.title,
+        url: tab.url,
+        domain: new URL(tab.url).hostname,
+        description: '',
+        keywords: '',
+        author: ''
+      };
+      sessionContent = fallbackContent;
+      console.log('⚠️ Using fallback content from tab info');
+      return fallbackContent;
+    }
+  } catch (e) {
+    console.error('Failed to get fallback content:', e);
+  }
+  
+  return null;
 }
 
 // End a browsing session
@@ -302,8 +377,15 @@ async function endSession() {
   console.log('🏁 Ending session:', {
     url: activeTab.url,
     duration: durationSeconds + ' seconds',
-    durationMs: sessionDuration + 'ms'
+    durationMs: sessionDuration + 'ms',
+    hasContent: !!sessionContent
   });
+  
+  // Try one more time to get content if we don't have it
+  if (!sessionContent && activeTab && activeTab.id) {
+    console.log('  ↳ Final attempt to get page content...');
+    await getPageContent(activeTab.id, 2);
+  }
   
   // TEMPORARILY REDUCED: Track sessions longer than 1 second for debugging
   if (sessionDuration > 1000) {
@@ -325,20 +407,46 @@ async function endSession() {
       }
     }
     
+    // Prepare content for the session
+    let finalContent = '';
+    let extractedConcepts = [];
+    
+    if (pdfInfo) {
+      // For PDFs, use PDF-extracted content
+      finalContent = pdfInfo.abstract || pdfInfo.content || '';
+      extractedConcepts = pdfInfo.concepts || [];
+    } else if (sessionContent) {
+      // For regular websites, use captured content
+      finalContent = sessionContent.content || '';
+      // Extract basic concepts from headings and keywords
+      if (sessionContent.headings && sessionContent.headings.length > 0) {
+        extractedConcepts = sessionContent.headings.slice(0, 5);
+      }
+      if (sessionContent.keywords) {
+        const keywords = sessionContent.keywords.split(',').map(k => k.trim()).filter(k => k);
+        extractedConcepts = [...new Set([...extractedConcepts, ...keywords])].slice(0, 10);
+      }
+    } else {
+      // Fallback: use title as content if nothing else is available
+      finalContent = activeTab.title || '';
+      console.log('  ↳ ⚠️ No content captured, using title as fallback');
+    }
+    
     const session = {
       url: activeTab.url,
-      title: pdfInfo ? pdfInfo.title : activeTab.title,
+      title: pdfInfo ? pdfInfo.title : (sessionContent?.title || activeTab.title),
       domain: activeTab.domain,
       startTime: sessionStartTime,
       endTime: Date.now(),
       duration: sessionDuration,
       category: pdfInfo ? pdfInfo.category : categorizeUrl(activeTab.url),
       focusType: determineFocusType(sessionDuration),
-      content: pdfInfo ? (pdfInfo.abstract || pdfInfo.content || '') : (sessionContent ? sessionContent.content || '' : ''),
+      content: finalContent,
       // Add PDF-specific metadata if available
       pdfMetadata: pdfInfo || null,
       isPDF: !!pdfInfo,
-      concepts: pdfInfo ? pdfInfo.concepts : []
+      concepts: extractedConcepts,
+      hasContent: !!finalContent
     };
     
     console.log('  ↳ Session qualifies for tracking');
@@ -346,7 +454,10 @@ async function endSession() {
       startTime: new Date(session.startTime).toLocaleTimeString(),
       endTime: new Date(session.endTime).toLocaleTimeString(),
       durationMs: session.duration,
-      durationSeconds: Math.round(session.duration / 1000)
+      durationSeconds: Math.round(session.duration / 1000),
+      hasContent: session.hasContent,
+      contentLength: session.content ? session.content.length : 0,
+      conceptCount: session.concepts.length
     });
     
     // Save session data
@@ -689,6 +800,112 @@ async function handleMessage(request, sender, sendResponse) {
       case 'exportData':
         const allData = await chrome.storage.local.get(null);
         sendResponse({ success: true, data: allData });
+        break;
+        
+      case 'testPDFKnowledge':
+        // Test handler for PDF knowledge pipeline
+        console.log('🧪 Testing PDF knowledge pipeline...');
+        try {
+          if (!browsingTracker) {
+            throw new Error('BrowsingTracker not initialized');
+          }
+          
+          const testSession = {
+            ...request.testData,
+            startTime: Date.now() - request.testData.duration,
+            endTime: Date.now(),
+            focusType: 'deep',
+            content: 'Test content for knowledge extraction',
+            pdfMetadata: {
+              type: 'research_paper',
+              source: 'arxiv',
+              title: request.testData.title,
+              concepts: request.testData.concepts || [],
+              paperId: 'test-2407.06204'
+            }
+          };
+          
+          // Process through browsing tracker
+          const result = await browsingTracker.addSession(testSession);
+          
+          // Check if knowledge node was created
+          const nodes = await chrome.storage.local.get(['knowledge_nodes']);
+          const latestNode = nodes.knowledge_nodes ? nodes.knowledge_nodes[nodes.knowledge_nodes.length - 1] : null;
+          
+          sendResponse({ 
+            success: true, 
+            node: latestNode,
+            sessionAdded: !!result
+          });
+        } catch (error) {
+          console.error('❌ Test failed:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+        break;
+        
+      case 'testWebsiteKnowledge':
+        // Test handler for regular website knowledge pipeline
+        console.log('🧪 Testing website knowledge pipeline...');
+        try {
+          if (!browsingTracker) {
+            throw new Error('BrowsingTracker not initialized');
+          }
+          
+          // Prepare concepts from headings and keywords
+          let extractedConcepts = [];
+          if (request.testData.headings && request.testData.headings.length > 0) {
+            extractedConcepts = request.testData.headings.slice(0, 5);
+          }
+          if (request.testData.keywords) {
+            const keywords = request.testData.keywords.split(',').map(k => k.trim()).filter(k => k);
+            extractedConcepts = [...new Set([...extractedConcepts, ...keywords])].slice(0, 10);
+          }
+          
+          const testSession = {
+            ...request.testData,
+            startTime: Date.now() - request.testData.duration,
+            endTime: Date.now(),
+            focusType: 'deep',
+            content: request.testData.content || 'Test content for knowledge extraction',
+            concepts: extractedConcepts,
+            hasContent: true,
+            isPDF: false,
+            pdfMetadata: null
+          };
+          
+          console.log('📝 Website test session prepared:', {
+            title: testSession.title,
+            hasContent: !!testSession.content,
+            contentLength: testSession.content.length,
+            conceptCount: testSession.concepts.length,
+            concepts: testSession.concepts
+          });
+          
+          // Process through browsing tracker
+          const result = await browsingTracker.addSession(testSession);
+          
+          // Wait a bit for processing to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Check if knowledge node was created
+          const nodes = await chrome.storage.local.get(['knowledge_nodes']);
+          const latestNode = nodes.knowledge_nodes ? nodes.knowledge_nodes[nodes.knowledge_nodes.length - 1] : null;
+          
+          console.log('📊 Website test result:', {
+            sessionAdded: !!result,
+            nodeCreated: !!latestNode,
+            nodeTitle: latestNode?.title
+          });
+          
+          sendResponse({ 
+            success: true, 
+            node: latestNode,
+            sessionAdded: !!result
+          });
+        } catch (error) {
+          console.error('❌ Website test failed:', error);
+          sendResponse({ success: false, error: error.message });
+        }
         break;
         
       default:

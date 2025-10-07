@@ -9,18 +9,47 @@ export class BrowsingTracker {
     this.domainStats = new Map();
     this.knowledgeGraph = null;
     this.aiSummarizer = null;
-    this.initializeServices();
+    this.initialized = false;
+    // Don't initialize in constructor - wait for explicit call
   }
 
   async initializeServices() {
+    if (this.initialized) {
+      console.log('BrowsingTracker already initialized');
+      return true;
+    }
+    
     try {
+      console.log('🔄 BrowsingTracker: Starting initialization...');
+      
       this.knowledgeGraph = getKnowledgeGraph();
       this.aiSummarizer = getAISummarizer();
-      await this.knowledgeGraph.initialize();
-      await this.aiSummarizer.initialize();
-      console.log('Knowledge Graph and AI Summarizer initialized in BrowsingTracker');
+      
+      // Initialize with error handling for each service
+      try {
+        await this.knowledgeGraph.initialize();
+        console.log('✅ Knowledge Graph initialized in BrowsingTracker');
+      } catch (kgError) {
+        console.error('❌ Knowledge Graph initialization failed:', kgError);
+        // Continue even if KG fails - we can still track sessions
+      }
+      
+      try {
+        await this.aiSummarizer.initialize();
+        console.log('✅ AI Summarizer initialized in BrowsingTracker');
+      } catch (aiError) {
+        console.error('❌ AI Summarizer initialization failed:', aiError);
+        // Continue even if AI fails - we can still track sessions
+      }
+      
+      this.initialized = true;
+      console.log('✅ BrowsingTracker initialization complete');
+      return true;
     } catch (error) {
-      console.error('Error initializing services:', error);
+      console.error('❌ Error initializing BrowsingTracker services:', error);
+      // Mark as initialized even with errors to prevent repeated attempts
+      this.initialized = true;
+      return false;
     }
   }
 
@@ -95,9 +124,23 @@ export class BrowsingTracker {
           }
           
           // Process for knowledge graph
+          console.log('  📊 Calling knowledgeGraph.processPage with:', {
+            hasPageData: !!pageData,
+            hasSummary: !!summary,
+            summaryText: summary?.text?.substring(0, 100) + '...'
+          });
+          
           const knowledgeNode = await this.knowledgeGraph.processPage(pageData, summary);
-          console.log('✅ Knowledge node created:', knowledgeNode.id);
-          console.log('  Concepts extracted:', knowledgeNode.concepts);
+          
+          if (knowledgeNode) {
+            console.log('✅ Knowledge node created successfully!');
+            console.log('  Node ID:', knowledgeNode.id);
+            console.log('  Title:', knowledgeNode.title);
+            console.log('  Concepts extracted:', knowledgeNode.concepts);
+            console.log('  Connections found:', knowledgeNode.connections?.length || 0);
+          } else {
+            console.log('❌ Knowledge node creation returned null/undefined');
+          }
           
         } catch (error) {
           console.error('❌ Error processing session for knowledge graph:', error);

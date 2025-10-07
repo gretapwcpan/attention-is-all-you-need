@@ -9,6 +9,10 @@ export class AIService {
     this.modelParams = null;
     this.initialized = false;
     this.abortController = null;
+    this.failureCount = 0;
+    this.maxFailures = 3;
+    this.lastFailureTime = null;
+    this.failureCooldown = 60000; // 1 minute cooldown after failures
   }
 
   /**
@@ -72,6 +76,21 @@ export class AIService {
    * Create a new AI session with proper configuration
    */
   async createSession(options = {}) {
+    // Check if we're in cooldown period after failures
+    if (this.failureCount >= this.maxFailures) {
+      const timeSinceLastFailure = Date.now() - this.lastFailureTime;
+      if (timeSinceLastFailure < this.failureCooldown) {
+        console.log(`AI service in cooldown after ${this.failureCount} failures. Retry in ${Math.round((this.failureCooldown - timeSinceLastFailure) / 1000)}s`);
+        this.available = false;
+        throw new Error('AI service temporarily disabled due to repeated failures');
+      } else {
+        // Reset failure count after cooldown
+        console.log('Cooldown period ended, resetting failure count');
+        this.failureCount = 0;
+        this.lastFailureTime = null;
+      }
+    }
+    
     console.log('Creating AI session...');
     
     // Clean up existing session if any
@@ -119,12 +138,25 @@ export class AIService {
       
       if (this.session) {
         this.available = true;
+        this.failureCount = 0; // Reset failure count on success
         console.log('Gemini Nano session created successfully!');
         console.log('Session configuration:', sessionConfig);
         return this.session;
       }
     } catch (error) {
       console.error('Error creating session:', error);
+      
+      // Track failures
+      this.failureCount++;
+      this.lastFailureTime = Date.now();
+      
+      // Check if this is a "model crashed too many times" error
+      if (error.message?.includes('crashed too many times')) {
+        console.error(`AI model has crashed ${this.failureCount} times. Disabling for ${this.failureCooldown / 1000} seconds.`);
+        this.available = false;
+        this.session = null;
+      }
+      
       throw error;
     }
   }
@@ -165,6 +197,15 @@ export class AIService {
    * Generate text using Gemini Nano
    */
   async generateText(prompt, options = {}) {
+    // Check if we're in cooldown
+    if (this.failureCount >= this.maxFailures) {
+      const timeSinceLastFailure = Date.now() - this.lastFailureTime;
+      if (timeSinceLastFailure < this.failureCooldown) {
+        console.log('AI service in cooldown, using fallback mode');
+        throw new Error('AI service not available. Using fallback mode.');
+      }
+    }
+    
     if (!this.available || !this.session) {
       // Try to create a session if not available (handle both old and new API responses)
       if (this.availability === 'readily' || this.availability === 'available' || this.availability === 'after-download') {
@@ -180,16 +221,33 @@ export class AIService {
 
     try {
       const result = await this.session.prompt(prompt);
+      this.failureCount = 0; // Reset on success
       return result;
     } catch (error) {
       console.error('Error generating text:', error);
       
-      // If session expired or failed, try to recreate it
-      if (error.message?.includes('session') || error.message?.includes('abort')) {
-        console.log('Session expired, creating new session...');
-        await this.createSession(options);
-        // Retry once with new session
-        return await this.session.prompt(prompt);
+      // Track failures
+      this.failureCount++;
+      this.lastFailureTime = Date.now();
+      
+      // Check for session destroyed error
+      if (error.message?.includes('session has been destroyed') || error.message?.includes('crashed')) {
+        console.log('Session destroyed, marking as unavailable');
+        this.session = null;
+        this.available = false;
+      }
+      
+      // If not at max failures yet and it's a session error, try to recreate
+      if (this.failureCount < this.maxFailures && 
+          (error.message?.includes('session') || error.message?.includes('abort'))) {
+        console.log(`Session error (attempt ${this.failureCount}/${this.maxFailures}), trying to recreate...`);
+        try {
+          await this.createSession(options);
+          // Retry once with new session
+          return await this.session.prompt(prompt);
+        } catch (retryError) {
+          console.error('Failed to recreate session:', retryError);
+        }
       }
       
       throw error;
@@ -489,6 +547,26 @@ Format as numbered list.`;
   }
 
   /**
+   * Check if service is healthy
+   */
+  isHealthy() {
+    if (this.failureCount >= this.maxFailures) {
+      const timeSinceLastFailure = Date.now() - this.lastFailureTime;
+      return timeSinceLastFailure >= this.failureCooldown;
+    }
+    return true;
+  }
+  
+  /**
+   * Reset failure tracking
+   */
+  resetFailures() {
+    this.failureCount = 0;
+    this.lastFailureTime = null;
+    console.log('AI service failure count reset');
+  }
+  
+  /**
    * Clean up resources
    */
   async cleanup() {
@@ -504,6 +582,8 @@ Format as numbered list.`;
     
     this.available = false;
     this.initialized = false;
+    this.failureCount = 0;
+    this.lastFailureTime = null;
   }
 }
 

@@ -1,6 +1,6 @@
 // Analytics Dashboard JavaScript
-import { KnowledgeStorage } from '../utils/knowledge-storage.js';
-import { KnowledgeGraph } from '../utils/knowledge-graph.js';
+import { getKnowledgeStorage } from '../utils/knowledge-storage.js';
+import { getKnowledgeGraph } from '../utils/knowledge-graph.js';
 import { NetworkVisualizer } from '../utils/network-visualizer.js';
 
 // DOM Elements
@@ -27,9 +27,9 @@ const elements = {
   learningInsights: document.getElementById('learningInsights')
 };
 
-// Initialize Knowledge modules
-const knowledgeStorage = new KnowledgeStorage();
-const knowledgeGraph = new KnowledgeGraph();
+// Initialize Knowledge modules - use singletons
+const knowledgeStorage = getKnowledgeStorage();
+const knowledgeGraph = getKnowledgeGraph();
 let networkVisualizer = null;
 
 // Initialize

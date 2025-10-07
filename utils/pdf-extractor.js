@@ -44,111 +44,118 @@ export class PDFExtractor {
   }
 
   /**
-   * Extract information from ArXiv papers
+   * Extract information from ArXiv papers using tab title
    */
   async extractArxivInfo(pdfUrl, tabTitle) {
-    try {
-      // Extract paper ID from various ArXiv URL formats
-      let paperId = null;
-      
-      // Format: https://arxiv.org/pdf/2407.06204.pdf or /pdf/2407.06204
-      let match = pdfUrl.match(/arxiv\.org\/(?:pdf|abs)\/(\d+\.\d+(?:v\d+)?)/);
-      if (!match) {
-        // Try older format: https://arxiv.org/pdf/cs/0301001
-        match = pdfUrl.match(/arxiv\.org\/(?:pdf|abs)\/([a-z-]+\/\d+)/);
-      }
-      
-      if (!match) {
-        console.log('Could not extract ArXiv paper ID from URL:', pdfUrl);
-        return this.createBasicPDFInfo(pdfUrl, tabTitle);
-      }
-      
-      paperId = match[1];
-      console.log('Extracting ArXiv paper:', paperId);
-      
-      // Fetch from ArXiv API
-      const apiUrl = `${this.arxivApiBase}?id_list=${paperId}&max_results=1`;
-      const response = await fetch(apiUrl);
-      
-      if (!response.ok) {
-        throw new Error(`ArXiv API request failed: ${response.status}`);
-      }
-      
-      const xmlText = await response.text();
-      
-      // Parse XML response
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(xmlText, 'text/xml');
-      
-      // Check if we got a valid entry
-      const entry = doc.querySelector('entry');
-      if (!entry) {
-        console.log('No entry found in ArXiv response');
-        return this.createBasicPDFInfo(pdfUrl, tabTitle);
-      }
-      
-      // Extract all relevant information
-      const title = entry.querySelector('title')?.textContent?.trim() || tabTitle;
-      const summary = entry.querySelector('summary')?.textContent?.trim() || '';
-      const published = entry.querySelector('published')?.textContent || '';
-      const updated = entry.querySelector('updated')?.textContent || '';
-      
-      // Extract authors
-      const authors = Array.from(entry.querySelectorAll('author')).map(author => {
-        const name = author.querySelector('name')?.textContent?.trim();
-        const affiliation = author.querySelector('affiliation')?.textContent?.trim();
-        return affiliation ? `${name} (${affiliation})` : name;
-      }).filter(Boolean);
-      
-      // Extract categories
-      const categories = Array.from(entry.querySelectorAll('category')).map(cat => 
-        cat.getAttribute('term')
-      ).filter(Boolean);
-      
-      // Extract links
-      const links = {};
-      entry.querySelectorAll('link').forEach(link => {
-        const rel = link.getAttribute('rel');
-        const href = link.getAttribute('href');
-        if (rel && href) {
-          links[rel] = href;
-        }
-      });
-      
-      // Extract key concepts from title and abstract
-      const concepts = this.extractConcepts(title + ' ' + summary);
-      
-      // Determine primary category for classification
-      const primaryCategory = categories[0] || 'research';
-      const category = this.mapArxivCategoryToLocal(primaryCategory);
-      
-      return {
-        type: 'research_paper',
-        source: 'arxiv',
-        title: title,
-        authors: authors,
-        abstract: summary,
-        content: summary, // For compatibility with existing system
-        categories: categories,
-        published: published ? new Date(published).toISOString() : null,
-        updated: updated ? new Date(updated).toISOString() : null,
-        paperId: paperId,
-        url: pdfUrl,
-        pdfUrl: links.pdf || pdfUrl,
-        abstractUrl: links.alternate || pdfUrl.replace('/pdf/', '/abs/'),
-        concepts: concepts,
-        category: category,
-        metadata: {
-          arxivId: paperId,
-          version: paperId.includes('v') ? paperId.split('v')[1] : '1',
-          primaryCategory: primaryCategory,
-          allCategories: categories
-        }
-      };
-    } catch (error) {
-      console.error('Error extracting ArXiv info:', error);
-      return this.createBasicPDFInfo(pdfUrl, tabTitle);
+    // Extract paper ID from URL for reference
+    let paperId = null;
+    let match = pdfUrl.match(/arxiv\.org\/(?:pdf|abs)\/(\d+\.\d+(?:v\d+)?)/);
+    if (!match) {
+      match = pdfUrl.match(/arxiv\.org\/(?:pdf|abs)\/([a-z-]+\/\d+)/);
     }
+    
+    if (match) {
+      paperId = match[1];
+    }
+    
+    console.log('Processing ArXiv PDF:', paperId || 'unknown', 'Title:', tabTitle);
+    
+    // Use the tab title as the primary source of information
+    const title = tabTitle || this.extractTitleFromUrl(pdfUrl);
+    
+    // Extract concepts from the title
+    const concepts = this.extractConcepts(title);
+    
+    // Add ArXiv-specific concepts
+    if (paperId) {
+      // Extract subject area from paper ID if available
+      const subjectMatch = paperId.match(/^([a-z-]+)\//);
+      if (subjectMatch) {
+        const subject = this.mapArxivSubjectToConcept(subjectMatch[1]);
+        if (subject && !concepts.includes(subject)) {
+          concepts.push(subject);
+        }
+      }
+      
+      // Year from paper ID (first 2 digits often indicate year)
+      const yearMatch = paperId.match(/^(\d{2})/);
+      if (yearMatch) {
+        const year = parseInt('20' + yearMatch[1]);
+        if (year >= 2000 && year <= new Date().getFullYear()) {
+          concepts.push(`${year} research`);
+        }
+      }
+    }
+    
+    // Always add 'research paper' and 'arxiv' as concepts for ArXiv papers
+    if (!concepts.includes('research paper')) {
+      concepts.push('research paper');
+    }
+    if (!concepts.includes('arxiv')) {
+      concepts.push('arxiv');
+    }
+    
+    return {
+      type: 'research_paper',
+      source: 'arxiv',
+      title: title,
+      url: pdfUrl,
+      paperId: paperId,
+      concepts: concepts.slice(0, 10), // Limit to 10 concepts
+      category: 'Research',
+      content: title, // Use title as content for knowledge graph
+      metadata: {
+        arxivId: paperId,
+        extractedFromTitle: true
+      }
+    };
+  }
+
+  /**
+   * Map ArXiv subject codes to concepts
+   */
+  mapArxivSubjectToConcept(subject) {
+    const subjectMap = {
+      'cs': 'computer science',
+      'math': 'mathematics',
+      'physics': 'physics',
+      'q-bio': 'quantitative biology',
+      'q-fin': 'quantitative finance',
+      'stat': 'statistics',
+      'eess': 'electrical engineering',
+      'econ': 'economics',
+      'astro-ph': 'astrophysics',
+      'cond-mat': 'condensed matter',
+      'gr-qc': 'general relativity',
+      'hep': 'high energy physics',
+      'nlin': 'nonlinear sciences',
+      'nucl': 'nuclear physics',
+      'quant-ph': 'quantum physics'
+    };
+    
+    return subjectMap[subject] || null;
+  }
+
+  /**
+   * Helper function to extract content from XML tags
+   * Note: This is kept for potential future use but not currently needed
+   */
+  extractXMLContent(xml, tagName) {
+    const regex = new RegExp(`<${tagName}>([\\s\\S]*?)<\/${tagName}>`, 'i');
+    const match = xml.match(regex);
+    if (match && match[1]) {
+      // Clean up the content - remove CDATA, trim whitespace, decode entities
+      return match[1]
+        .replace(/<!\[CDATA\[|\]\]>/g, '')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    return null;
   }
 
   /**
