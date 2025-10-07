@@ -22,7 +22,6 @@ const elements = {
   knowledgeSearch: document.getElementById('knowledgeSearch'),
   searchBtn: document.getElementById('searchBtn'),
   searchResults: document.getElementById('searchResults'),
-  learningTimeline: document.getElementById('learningTimeline'),
   topConcepts: document.getElementById('topConcepts'),
   recentNodes: document.getElementById('recentNodes'),
   learningInsights: document.getElementById('learningInsights')
@@ -557,9 +556,6 @@ async function loadKnowledgeGraph() {
       elements.learningStreak.textContent = `${streak} days`;
     }
     
-    // Load timeline
-    await loadLearningTimeline();
-    
     // Load top concepts
     await loadTopConcepts();
     
@@ -601,51 +597,6 @@ function calculateLearningStreak(timeline) {
   }
   
   return streak;
-}
-
-// Load learning timeline
-async function loadLearningTimeline() {
-  if (!elements.learningTimeline) return;
-  
-  try {
-    const nodes = await knowledgeStorage.getAllNodes();
-    const recentNodes = nodes.slice(-20).reverse(); // Last 20 nodes
-    
-    if (recentNodes.length === 0) {
-      elements.learningTimeline.innerHTML = '<div class="empty-state">Your learning journey will appear here.</div>';
-      return;
-    }
-    
-    // Group by date
-    const nodesByDate = {};
-    recentNodes.forEach(node => {
-      if (!nodesByDate[node.date]) {
-        nodesByDate[node.date] = [];
-      }
-      nodesByDate[node.date].push(node);
-    });
-    
-    // Render timeline
-    const timelineHTML = Object.entries(nodesByDate).map(([date, nodes]) => `
-      <div class="timeline-item">
-        <div class="timeline-date">${new Date(date).toLocaleDateString('en', { month: 'short', day: 'numeric' })}</div>
-        <div class="timeline-content">
-          ${nodes.map(node => `
-            <div class="timeline-title">${truncateText(node.title, 60)}</div>
-            <div class="timeline-concepts">
-              ${node.concepts.slice(0, 3).map(c => 
-                `<span class="timeline-concept">${c}</span>`
-              ).join('')}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `).join('');
-    
-    elements.learningTimeline.innerHTML = timelineHTML;
-  } catch (error) {
-    console.error('Error loading timeline:', error);
-  }
 }
 
 // Load top concepts
@@ -695,21 +646,39 @@ async function loadTopConcepts() {
   }
 }
 
-// Load recent nodes
+// Load recent nodes with deduplication
 async function loadRecentNodes() {
   if (!elements.recentNodes) return;
   
   try {
     const nodes = await knowledgeStorage.getAllNodes();
-    const recentNodes = nodes.slice(-10).reverse(); // Last 10 nodes
+    let recentNodes = nodes.slice(-20).reverse(); // Get last 20 nodes for deduplication
     
     if (recentNodes.length === 0) {
       elements.recentNodes.innerHTML = '<div class="empty-state">Your recent learning will appear here.</div>';
       return;
     }
     
+    // Deduplicate consecutive nodes with same title
+    const dedupedNodes = [];
+    let previousTitle = null;
+    
+    for (const node of recentNodes) {
+      // Normalize title for comparison (remove extra spaces, lowercase)
+      const normalizedTitle = node.title.trim().toLowerCase();
+      
+      // Only add if title is different from previous node
+      if (normalizedTitle !== previousTitle) {
+        dedupedNodes.push(node);
+        previousTitle = normalizedTitle;
+      }
+    }
+    
+    // Limit to 10 nodes after deduplication
+    const finalNodes = dedupedNodes.slice(0, 10);
+    
     // Render nodes
-    const nodesHTML = recentNodes.map(node => `
+    const nodesHTML = finalNodes.map(node => `
       <div class="knowledge-node">
         <div class="node-title">${truncateText(node.title, 80)}</div>
         <div class="node-meta">
@@ -833,8 +802,10 @@ function setupGraphControls() {
   const resetGraphBtn = document.getElementById('resetGraphBtn');
   if (resetGraphBtn) {
     resetGraphBtn.addEventListener('click', () => {
-      if (networkVisualizer) {
+      if (networkVisualizer && networkVisualizer.network) {
         networkVisualizer.resetView();
+      } else {
+        console.log('Network visualizer not ready');
       }
     });
   }
@@ -843,9 +814,11 @@ function setupGraphControls() {
   const togglePhysicsBtn = document.getElementById('togglePhysicsBtn');
   if (togglePhysicsBtn) {
     togglePhysicsBtn.addEventListener('click', () => {
-      if (networkVisualizer) {
+      if (networkVisualizer && networkVisualizer.network) {
         networkVisualizer.togglePhysics();
         togglePhysicsBtn.textContent = networkVisualizer.physicsEnabled ? 'Disable Physics' : 'Enable Physics';
+      } else {
+        console.log('Network visualizer not ready');
       }
     });
   }
@@ -854,8 +827,10 @@ function setupGraphControls() {
   const graphFilter = document.getElementById('graphFilter');
   if (graphFilter) {
     graphFilter.addEventListener('change', (e) => {
-      if (networkVisualizer) {
+      if (networkVisualizer && networkVisualizer.network) {
         networkVisualizer.filterByTime(e.target.value);
+      } else {
+        console.log('Network visualizer not ready');
       }
     });
   }

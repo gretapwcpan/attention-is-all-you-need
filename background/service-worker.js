@@ -4,6 +4,7 @@
 import { getAIService } from '../utils/ai-service.js';
 import { getAISummarizer } from '../utils/ai-summarizer.js';
 import { BrowsingTracker } from '../utils/browsing-tracker.js';
+import { PDFExtractor } from '../utils/pdf-extractor.js';
 
 // Note: TodoAIMapper cannot be dynamically imported in service workers
 // We'll handle it through message passing instead
@@ -19,6 +20,7 @@ let aiService = null;
 let aiSummarizer = null;
 let todoMapperAvailable = false;
 let browsingTracker = null;
+let pdfExtractor = null;
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
@@ -43,31 +45,54 @@ chrome.runtime.onStartup.addListener(async () => {
   await initializeAIServices();
 });
 
-// Initialize AI services
+// Initialize AI services with retry logic
 async function initializeAIServices() {
   try {
+    console.log('🔄 Starting AI services initialization...');
+    
     aiService = getAIService();
     aiSummarizer = getAISummarizer();
     
     // Initialize AI service
     const aiAvailable = await aiService.initialize();
-    console.log('AI Service available:', aiAvailable);
+    console.log('✅ AI Service available:', aiAvailable);
     
     // Initialize summarizer
     await aiSummarizer.initialize();
-    console.log('AI Summarizer initialized');
+    console.log('✅ AI Summarizer initialized');
     
-    // Initialize BrowsingTracker
-    browsingTracker = new BrowsingTracker();
-    console.log('BrowsingTracker initialized');
+    // Initialize BrowsingTracker with retry
+    if (!browsingTracker) {
+      try {
+        browsingTracker = new BrowsingTracker();
+        await browsingTracker.initializeServices();
+        console.log('✅ BrowsingTracker initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize BrowsingTracker:', error);
+        browsingTracker = null;
+      }
+    }
+    
+    // Initialize PDFExtractor with retry
+    if (!pdfExtractor) {
+      try {
+        pdfExtractor = new PDFExtractor();
+        console.log('✅ PDFExtractor initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize PDFExtractor:', error);
+        pdfExtractor = null;
+      }
+    }
     
     // Mark todo mapper as available (we'll handle it through message passing)
     // Service workers cannot use dynamic import(), so we'll skip direct initialization
     todoMapperAvailable = true;
-    console.log('Todo mapper marked as available for message passing');
+    console.log('✅ Todo mapper marked as available for message passing');
+    
+    console.log('🎉 AI services initialization complete');
     
   } catch (error) {
-    console.error('Error initializing AI services:', error);
+    console.error('❌ Error initializing AI services:', error);
   }
 }
 
@@ -125,7 +150,7 @@ async function setInStorage(key, value) {
 
 // Handle tab activation
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  console.log('📍 Tab activated:', activeInfo.tabId);
+  console.log('� Tab activated:', activeInfo.tabId);
   
   // End previous session
   if (activeTab && sessionStartTime) {
@@ -282,16 +307,38 @@ async function endSession() {
   
   // TEMPORARILY REDUCED: Track sessions longer than 1 second for debugging
   if (sessionDuration > 1000) {
+    // Check if this is a PDF URL and extract information if it is
+    let pdfInfo = null;
+    if (pdfExtractor && pdfExtractor.isPDFUrl(activeTab.url)) {
+      console.log('  ↳ 📄 Detected PDF URL, extracting information...');
+      try {
+        pdfInfo = await pdfExtractor.extractPDFInfo(activeTab.url, activeTab.title);
+        console.log('  ↳ ✅ PDF info extracted:', {
+          type: pdfInfo.type,
+          source: pdfInfo.source,
+          title: pdfInfo.title,
+          hasConcepts: !!pdfInfo.concepts,
+          conceptCount: pdfInfo.concepts ? pdfInfo.concepts.length : 0
+        });
+      } catch (error) {
+        console.error('  ↳ ❌ Error extracting PDF info:', error);
+      }
+    }
+    
     const session = {
       url: activeTab.url,
-      title: activeTab.title,
+      title: pdfInfo ? pdfInfo.title : activeTab.title,
       domain: activeTab.domain,
       startTime: sessionStartTime,
       endTime: Date.now(),
       duration: sessionDuration,
-      category: categorizeUrl(activeTab.url),
+      category: pdfInfo ? pdfInfo.category : categorizeUrl(activeTab.url),
       focusType: determineFocusType(sessionDuration),
-      content: sessionContent ? sessionContent.content || '' : '' // Extract content from response object
+      content: pdfInfo ? (pdfInfo.abstract || pdfInfo.content || '') : (sessionContent ? sessionContent.content || '' : ''),
+      // Add PDF-specific metadata if available
+      pdfMetadata: pdfInfo || null,
+      isPDF: !!pdfInfo,
+      concepts: pdfInfo ? pdfInfo.concepts : []
     };
     
     console.log('  ↳ Session qualifies for tracking');

@@ -36,30 +36,44 @@ export async function loadVisLibrary() {
   }
   
   try {
-    // Try to load the local script
-    const script = document.createElement('script');
-    script.src = chrome.runtime.getURL('libs/vis-network.min.js');
-    script.type = 'text/javascript';
+    // For analytics page, the scripts should already be loaded via HTML
+    // But if not, try to load them dynamically
+    const scriptSrc = '../libs/vis-network.min.js';
+    const linkHref = '../libs/vis-network.min.css';
     
-    const link = document.createElement('link');
-    link.href = chrome.runtime.getURL('libs/vis-network.min.css');
-    link.rel = 'stylesheet';
-    link.type = 'text/css';
+    // Check if script already exists
+    const existingScript = document.querySelector(`script[src*="vis-network.min.js"]`);
+    const existingLink = document.querySelector(`link[href*="vis-network.min.css"]`);
     
-    // Add to document
-    document.head.appendChild(link);
+    if (!existingLink) {
+      const link = document.createElement('link');
+      link.href = linkHref;
+      link.rel = 'stylesheet';
+      link.type = 'text/css';
+      document.head.appendChild(link);
+    }
     
-    return new Promise((resolve, reject) => {
-      script.onload = () => {
-        console.log('Vis.js loaded dynamically');
-        resolve();
-      };
-      script.onerror = (error) => {
-        console.error('Failed to load Vis.js:', error);
-        reject(error);
-      };
-      document.head.appendChild(script);
-    });
+    if (!existingScript) {
+      const script = document.createElement('script');
+      script.src = scriptSrc;
+      script.type = 'text/javascript';
+      
+      return new Promise((resolve, reject) => {
+        script.onload = () => {
+          console.log('Vis.js loaded dynamically');
+          // Give it a moment to initialize
+          setTimeout(resolve, 100);
+        };
+        script.onerror = (error) => {
+          console.error('Failed to load Vis.js:', error);
+          reject(error);
+        };
+        document.head.appendChild(script);
+      });
+    } else {
+      // Script tag exists, wait for vis to be available
+      await ensureVisLoaded();
+    }
   } catch (error) {
     console.error('Error loading Vis.js:', error);
     throw error;

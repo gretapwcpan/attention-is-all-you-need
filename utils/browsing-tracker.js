@@ -59,6 +59,7 @@ export class BrowsingTracker {
           console.log('✨ Processing session for knowledge graph:', sessionData.title);
           console.log('  Duration:', Math.round(sessionData.duration / 1000), 'seconds');
           console.log('  Has content:', !!sessionData.content);
+          console.log('  Is PDF:', !!sessionData.isPDF);
           
           // Prepare page data for knowledge graph
           const pageData = {
@@ -66,12 +67,25 @@ export class BrowsingTracker {
             title: sessionData.title,
             content: sessionData.content || '',
             timeSpent: sessionData.duration,
-            category: sessionData.category || 'General'
+            category: sessionData.category || 'General',
+            // Include PDF metadata if available
+            isPDF: sessionData.isPDF || false,
+            pdfMetadata: sessionData.pdfMetadata || null,
+            concepts: sessionData.concepts || []
           };
           
           // Generate AI summary if available
           let summary = null;
-          if (this.aiSummarizer && this.aiSummarizer.shouldSummarize(pageData)) {
+          if (sessionData.isPDF && sessionData.pdfMetadata) {
+            // For PDFs, use the extracted abstract or create a summary from metadata
+            const pdfMeta = sessionData.pdfMetadata;
+            summary = {
+              text: pdfMeta.abstract || `Read ${pdfMeta.type === 'research_paper' ? 'research paper' : 'PDF document'}: "${sessionData.title}"${pdfMeta.authors ? ' by ' + pdfMeta.authors.slice(0, 2).join(', ') : ''}. Topics: ${sessionData.concepts.join(', ')}.`,
+              concepts: sessionData.concepts,
+              metadata: pdfMeta
+            };
+            console.log('  📄 Using PDF-extracted summary');
+          } else if (this.aiSummarizer && this.aiSummarizer.shouldSummarize(pageData)) {
             summary = await this.aiSummarizer.summarizePage(pageData);
           } else {
             // Use a simple fallback summary

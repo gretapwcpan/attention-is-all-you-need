@@ -53,6 +53,11 @@ export class NetworkVisualizer {
       // Clear any existing content
       this.container.innerHTML = '';
       
+      // Check if vis is available
+      if (typeof vis === 'undefined' || !vis.DataSet || !vis.Network) {
+        throw new Error('Vis.js library not available after loading attempts');
+      }
+      
       // Initialize data structures
       this.nodes = new vis.DataSet();
       this.edges = new vis.DataSet();
@@ -64,7 +69,7 @@ export class NetworkVisualizer {
       await this.loadKnowledgeData();
     } catch (error) {
       console.error('Failed to initialize NetworkVisualizer:', error);
-      this.showErrorState('Failed to load visualization library. Please refresh the page.');
+      this.showErrorState('Failed to load visualization. Please refresh the page.');
     }
   }
   
@@ -153,7 +158,7 @@ export class NetworkVisualizer {
       console.log('NetworkVisualizer: Starting to load knowledge data...');
       
       // Try multiple storage keys to find nodes
-      const storageKeys = ['knowledgeGraph', 'knowledgeNodes', 'knowledge_nodes'];
+      const storageKeys = ['knowledge_nodes', 'knowledgeNodes', 'knowledgeGraph'];
       let allNodes = [];
       
       for (const key of storageKeys) {
@@ -177,13 +182,24 @@ export class NetworkVisualizer {
       // Also check for sessions that could be converted to nodes
       if (allNodes.length === 0) {
         console.log('NetworkVisualizer: No nodes found, checking for sessions...');
-        const today = new Date().toDateString();
-        const sessionsKey = `sessions_${today}`;
-        const sessionsResult = await chrome.storage.local.get([sessionsKey]);
         
-        if (sessionsResult[sessionsKey] && sessionsResult[sessionsKey].length > 0) {
-          console.log(`NetworkVisualizer: Found ${sessionsResult[sessionsKey].length} sessions, converting to nodes...`);
-          allNodes = this.convertSessionsToNodes(sessionsResult[sessionsKey]);
+        // Get all storage keys
+        const allStorage = await chrome.storage.local.get(null);
+        const sessionKeys = Object.keys(allStorage).filter(key => key.startsWith('sessions_'));
+        
+        if (sessionKeys.length > 0) {
+          // Get the most recent sessions
+          const recentSessions = [];
+          for (const key of sessionKeys.slice(-7)) { // Last 7 days
+            if (allStorage[key] && Array.isArray(allStorage[key])) {
+              recentSessions.push(...allStorage[key]);
+            }
+          }
+          
+          if (recentSessions.length > 0) {
+            console.log(`NetworkVisualizer: Found ${recentSessions.length} sessions, converting to nodes...`);
+            allNodes = this.convertSessionsToNodes(recentSessions);
+          }
         }
       }
       
