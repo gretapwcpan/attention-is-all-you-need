@@ -24,13 +24,33 @@ export class AIService {
     }
 
     try {
-      // Check availability using the new method
-      this.availability = await self.LanguageModel.availability();
-      console.log('AI Availability status:', this.availability);
+      // First check if LanguageModel API exists
+      if (typeof self === 'undefined' || !self.LanguageModel) {
+        console.log('LanguageModel API not found in current context');
+        // Try without self prefix
+        if (typeof LanguageModel === 'undefined') {
+          console.log('LanguageModel API is not available');
+          this.availability = 'no';
+          this.available = false;
+          this.initialized = true;
+          return false;
+        }
+        // Use global LanguageModel
+        this.availability = await LanguageModel.availability();
+        console.log('AI Availability status (global):', this.availability);
+      } else {
+        // Use self.LanguageModel
+        this.availability = await self.LanguageModel.availability();
+        console.log('AI Availability status (self):', this.availability);
+      }
 
       // Get model parameters
       try {
-        this.modelParams = await self.LanguageModel.params();
+        if (typeof self !== 'undefined' && self.LanguageModel?.params) {
+          this.modelParams = await self.LanguageModel.params();
+        } else if (typeof LanguageModel !== 'undefined' && LanguageModel.params) {
+          this.modelParams = await LanguageModel.params();
+        }
         console.log('Model parameters:', this.modelParams);
       } catch (paramsError) {
         console.log('Could not get model params:', paramsError);
@@ -44,8 +64,12 @@ export class AIService {
       }
 
       // Handle both old and new availability values
-      if (this.availability === 'no') {
+      if (this.availability === 'no' || this.availability === 'unavailable') {
         console.log('Gemini Nano is not available on this device');
+        if (this.availability === 'unavailable') {
+          console.log('Status "unavailable" - Chrome AI is present but not currently accessible');
+          console.log('This may require: enabling flags, restarting Chrome, or waiting for initialization');
+        }
         this.available = false;
         this.initialized = true;
         return false;
@@ -59,6 +83,10 @@ export class AIService {
         // For after-download, we might want to try creating a session to trigger download
         console.log('Gemini Nano needs to be downloaded. Session will be created on first use.');
         this.available = true; // Mark as available, session will trigger download on first use
+      } else {
+        // Unknown status - log it and mark as unavailable
+        console.log('Unknown availability status:', this.availability);
+        this.available = false;
       }
 
       this.initialized = true;
@@ -134,7 +162,14 @@ export class AIService {
     }
 
     try {
-      this.session = await self.LanguageModel.create(sessionConfig);
+      // Try to create session with proper API detection
+      if (typeof self !== 'undefined' && self.LanguageModel) {
+        this.session = await self.LanguageModel.create(sessionConfig);
+      } else if (typeof LanguageModel !== 'undefined') {
+        this.session = await LanguageModel.create(sessionConfig);
+      } else {
+        throw new Error('LanguageModel API not available for session creation');
+      }
       
       if (this.session) {
         this.available = true;
@@ -188,6 +223,8 @@ export class AIService {
         return 'AI model is downloading, please wait...';
       case 'no':
         return 'AI is not available on this device';
+      case 'unavailable':
+        return 'AI is temporarily unavailable - please check Chrome flags and restart Chrome';
       default:
         return `Unknown availability status: ${this.availability}`;
     }
@@ -220,37 +257,75 @@ export class AIService {
     }
 
     try {
+      // Validate session before using it
+      if (!this.session || typeof this.session.prompt !== 'function') {
+        console.error('Invalid session state:', {
+          sessionExists: !!this.session,
+          hasPromptMethod: this.session ? typeof this.session.prompt : 'no session'
+        });
+        throw new Error('Session is invalid or prompt method not available');
+      }
+      
+      console.log('Attempting to generate text with prompt length:', prompt.length);
       const result = await this.session.prompt(prompt);
       this.failureCount = 0; // Reset on success
+      console.log('Text generation successful');
       return result;
     } catch (error) {
-      console.error('Error generating text:', error);
+      // Enhanced error logging for DOMException
+      let errorDetails = {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      };
+      
+      // Special handling for DOMException
+      if (error instanceof DOMException) {
+        errorDetails.type = 'DOMException';
+        errorDetails.domCode = error.code;
+        errorDetails.domName = error.name;
+        console.error('DOMException details:', errorDetails);
+      } else {
+        console.error('Error generating text:', errorDetails);
+      }
       
       // Track failures
       this.failureCount++;
       this.lastFailureTime = Date.now();
       
       // Check for session destroyed error
-      if (error.message?.includes('session has been destroyed') || error.message?.includes('crashed')) {
-        console.log('Session destroyed, marking as unavailable');
+      if (error.message?.includes('session has been destroyed') || 
+          error.message?.includes('crashed') ||
+          error.name === 'InvalidStateError') {
+        console.log('Session destroyed or invalid, marking as unavailable');
         this.session = null;
         this.available = false;
       }
       
       // If not at max failures yet and it's a session error, try to recreate
       if (this.failureCount < this.maxFailures && 
-          (error.message?.includes('session') || error.message?.includes('abort'))) {
+          (error.message?.includes('session') || 
+           error.message?.includes('abort') ||
+           error.name === 'AbortError')) {
         console.log(`Session error (attempt ${this.failureCount}/${this.maxFailures}), trying to recreate...`);
         try {
           await this.createSession(options);
           // Retry once with new session
           return await this.session.prompt(prompt);
         } catch (retryError) {
-          console.error('Failed to recreate session:', retryError);
+          console.error('Failed to recreate session:', {
+            name: retryError.name,
+            message: retryError.message,
+            stack: retryError.stack
+          });
         }
       }
       
-      throw error;
+      // Throw error with enhanced details
+      const enhancedError = new Error(`AI generation failed: ${error.name || 'Unknown'} - ${error.message || 'No message'}`);
+      enhancedError.originalError = error;
+      throw enhancedError;
     }
   }
 

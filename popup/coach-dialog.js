@@ -142,8 +142,36 @@ async function handleUserMessage() {
       // Use AI if available
       response = await generateAIResponse(message);
     } else {
-      // Show error when AI is not available
-      response = "AI service is not available. Please enable Chrome AI by following the instructions in the README: Go to chrome://flags/#optimization-guide-on-device-model and chrome://flags/#prompt-api-for-gemini-nano, enable both flags, and restart Chrome.";
+      // Show detailed error information for troubleshooting
+      const status = await aiService.checkAvailability();
+      console.log('AI Service Status:', status);
+      
+      response = `AI Service Debug Information:\n\n`;
+      response += `Status: ${status.status || 'unknown'}\n`;
+      response += `Available: ${status.available ? 'Yes' : 'No'}\n`;
+      response += `Message: ${status.message}\n\n`;
+      
+      // Check for specific API availability
+      if (typeof self !== 'undefined') {
+        if (self.ai?.languageModel) {
+          response += `✓ New API (self.LanguageModel) detected\n`;
+        } else {
+          response += `✗ New API (self.LanguageModel) NOT found\n`;
+        }
+        
+        if (self.LanguageModel) {
+          response += `✓ Legacy API (self.LanguageModel) detected\n`;
+        } else {
+          response += `✗ Legacy API (self.LanguageModel) NOT found\n`;
+        }
+      }
+      
+      response += `\nChrome Version: ${navigator.userAgent.match(/Chrome\/(\d+)/)?.[1] || 'Unknown'}\n`;
+      response += `\nIf APIs are not detected:\n`;
+      response += `1. Go to chrome://flags/#optimization-guide-on-device-model → Enable\n`;
+      response += `2. Go to chrome://flags/#prompt-api-for-gemini-nano → Enable\n`;
+      response += `3. Restart Chrome completely\n`;
+      response += `\nFor detailed diagnostics, open test-chrome-ai.html in your browser.`;
     }
     hideTyping();
     addMessage(response, 'coach');
@@ -152,34 +180,51 @@ async function handleUserMessage() {
     console.error('Error generating response:', error);
     hideTyping();
     
-    // Capture the actual error details
+    // Capture the actual error details with full stack trace
     let errorDetails = '';
     if (error.message) {
       errorDetails = error.message;
     } else if (typeof error === 'string') {
       errorDetails = error;
     } else {
-      errorDetails = 'Unknown error occurred';
+      errorDetails = JSON.stringify(error);
     }
     
-    // Create a more informative error message
-    let errorMessage = "I'm having trouble processing that right now.\n\n";
+    // Create a detailed error message for debugging
+    let errorMessage = "Error Details for Troubleshooting:\n\n";
     
-    // Add specific error details
-    errorMessage += `Error details: ${errorDetails}\n\n`;
+    // Add full error information
+    errorMessage += `Error Type: ${error.name || 'Unknown'}\n`;
+    errorMessage += `Error Message: ${errorDetails}\n`;
+    
+    // Add stack trace if available
+    if (error.stack) {
+      errorMessage += `\nStack Trace:\n${error.stack.split('\n').slice(0, 5).join('\n')}\n`;
+    }
+    
+    // Check AI service state
+    if (aiService) {
+      errorMessage += `\nAI Service State:\n`;
+      errorMessage += `- Available: ${aiService.available}\n`;
+      errorMessage += `- Availability: ${aiService.availability}\n`;
+      errorMessage += `- Session exists: ${aiService.session ? 'Yes' : 'No'}\n`;
+      errorMessage += `- Failure count: ${aiService.failureCount}/${aiService.maxFailures}\n`;
+      errorMessage += `- Is healthy: ${aiService.isHealthy ? aiService.isHealthy() : 'N/A'}\n`;
+    }
     
     // Add helpful instructions based on the error
+    errorMessage += `\nTroubleshooting:\n`;
     if (errorDetails.includes('not available') || errorDetails.includes('AI service')) {
-      errorMessage += "Please make sure Chrome AI is enabled:\n";
-      errorMessage += "1. Go to chrome://flags/#optimization-guide-on-device-model\n";
-      errorMessage += "2. Go to chrome://flags/#prompt-api-for-gemini-nano\n";
-      errorMessage += "3. Enable both flags and restart Chrome";
+      errorMessage += "- Chrome AI may not be enabled or available\n";
+      errorMessage += "- Check chrome://flags/#optimization-guide-on-device-model\n";
+      errorMessage += "- Check chrome://flags/#prompt-api-for-gemini-nano\n";
     } else if (errorDetails.includes('session') || errorDetails.includes('abort')) {
-      errorMessage += "The AI session was interrupted. Please try again.";
-    } else if (errorDetails.includes('token') || errorDetails.includes('limit')) {
-      errorMessage += "The message was too long. Please try a shorter message.";
+      errorMessage += "- AI session was interrupted, try again\n";
+    } else if (errorDetails.includes('crashed')) {
+      errorMessage += "- Chrome AI model crashed, it will recover in ~1 minute\n";
     } else {
-      errorMessage += "Please check the console for more details.";
+      errorMessage += "- Check browser console (F12) for more details\n";
+      errorMessage += "- Open test-chrome-ai.html for full diagnostics\n";
     }
     
     addMessage(errorMessage, 'coach');
@@ -226,10 +271,9 @@ Response:`;
 
     // Add options for language specification
     const options = {
-      systemPrompt: "You are an AI Reading Coach helping users understand and remember what they read. Please respond in English.",
+      systemPrompt: "You are an AI Reading Coach helping users understand and remember what they read. Always respond in English only.",
       temperature: 0.8,
-      topK: 40,
-      outputLanguage: 'en'  // Explicitly specify English output
+      topK: 40
     };
 
     const response = await aiService.generateText(prompt, options);
@@ -237,16 +281,26 @@ Response:`;
     
   } catch (error) {
     // Log detailed error information
-    console.error('generateAIResponse error details:', {
+    const errorInfo = {
       error: error,
       message: error.message,
+      name: error.name,
       stack: error.stack,
       aiServiceAvailable: aiService?.available,
-      aiServiceStatus: aiService?.availability
-    });
+      aiServiceStatus: aiService?.availability,
+      originalError: error.originalError
+    };
+    
+    console.error('generateAIResponse error details:', errorInfo);
+    
+    // Create a more informative error for display
+    const displayError = new Error(
+      error.message || 'Failed to generate AI response'
+    );
+    displayError.details = errorInfo;
     
     // Re-throw with more context
-    throw error;
+    throw displayError;
   }
 }
 
@@ -334,9 +388,8 @@ Format as a numbered list.`;
       
       // Add language specification options
       const options = {
-        systemPrompt: "You are a helpful analytics assistant providing actionable insights. Please respond in English.",
-        temperature: 0.7,
-        outputLanguage: 'en'  // Explicitly specify English output
+        systemPrompt: "You are a helpful analytics assistant providing actionable insights. Always respond in English only.",
+        temperature: 0.7
       };
       const response = await aiService.generateText(prompt, options);
       insights = response;
