@@ -298,9 +298,9 @@ function updatePetWithFocusState() {
 // Note: AI summaries feature has been removed as the DOM elements no longer exist
 // This functionality has been replaced by the Tamagotchi pet system
 
-// Ask AI MIND ARCHITECT for help - opens dialog window
+// Ask AI MIND READER for help - opens dialog window
 async function askAICoach() {
-  // Open the AI MIND ARCHITECT dialog in a new window
+  // Open the AI MIND READER dialog in a new window
   chrome.windows.create({
     url: chrome.runtime.getURL('popup/coach-dialog.html'),
     type: 'popup',
@@ -794,7 +794,7 @@ function setupEventListeners() {
     });
   }
   
-  // AI MIND ARCHITECT button
+  // AI MIND READER button
   if (elements.askCoach) {
     elements.askCoach.addEventListener('click', () => {
       chrome.windows.create({

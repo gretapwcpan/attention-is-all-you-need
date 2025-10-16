@@ -651,7 +651,7 @@ body::after {
   gap: 8px;
 }
 
-.complete-goal, .delete-goal {
+.complete-goal, .delete-goal, .edit-goal, .save-goal, .cancel-goal {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -705,6 +705,131 @@ body::after {
 .delete-goal svg {
   width: 16px;
   height: 16px;
+}
+
+/* Edit Mode Buttons */
+.edit-goal {
+  border-color: var(--neon-yellow);
+  color: var(--neon-yellow);
+  padding: 8px 12px;
+}
+
+.edit-goal:hover {
+  background: var(--neon-yellow);
+  color: var(--bg-dark);
+  box-shadow: 
+    0 0 20px var(--neon-yellow),
+    inset 0 0 10px rgba(255, 255, 0, 0.3);
+}
+
+.edit-goal svg {
+  width: 16px;
+  height: 16px;
+}
+
+.save-goal {
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+}
+
+.save-goal:hover {
+  background: var(--neon-green);
+  color: var(--bg-dark);
+  box-shadow: 
+    0 0 20px var(--neon-green),
+    inset 0 0 10px rgba(57, 255, 20, 0.3);
+}
+
+.save-goal svg {
+  width: 16px;
+  height: 16px;
+}
+
+.cancel-goal {
+  border-color: var(--neon-orange);
+  color: var(--neon-orange);
+}
+
+.cancel-goal:hover {
+  background: var(--neon-orange);
+  color: var(--bg-dark);
+  box-shadow: 
+    0 0 20px var(--neon-orange),
+    inset 0 0 10px rgba(255, 102, 0, 0.3);
+}
+
+.cancel-goal svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Edit Input Field */
+.goal-edit-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--bg-darker);
+  border: 2px solid var(--neon-yellow);
+  color: var(--text-primary);
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  outline: none;
+  transition: all 0.3s;
+  box-shadow: 
+    0 0 20px rgba(255, 255, 0, 0.3),
+    inset 0 0 10px rgba(255, 255, 0, 0.1);
+  margin-right: 10px;
+}
+
+.goal-edit-input:focus {
+  border-color: var(--neon-pink);
+  box-shadow: 
+    0 0 30px rgba(255, 0, 255, 0.4),
+    inset 0 0 15px rgba(255, 0, 255, 0.2);
+}
+
+/* Edit Mode Goal Item */
+.goal-item.editing {
+  border-color: var(--neon-yellow);
+  box-shadow: 
+    0 0 30px rgba(255, 255, 0, 0.3),
+    inset 0 0 15px rgba(255, 255, 0, 0.1);
+  animation: edit-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes edit-pulse {
+  0%, 100% { 
+    border-color: var(--neon-yellow);
+    box-shadow: 
+      0 0 20px rgba(255, 255, 0, 0.3),
+      inset 0 0 10px rgba(255, 255, 0, 0.1);
+  }
+  50% { 
+    border-color: var(--neon-pink);
+    box-shadow: 
+      0 0 30px rgba(255, 0, 255, 0.4),
+      inset 0 0 15px rgba(255, 0, 255, 0.2);
+  }
+}
+
+.goal-item.editing .goal-title {
+  display: none;
+}
+
+.goal-item.editing .goal-edit-input {
+  display: block !important;
+}
+
+.goal-item.editing .edit-goal,
+.goal-item.editing .complete-goal {
+  display: none !important;
+}
+
+.goal-item.editing .save-goal,
+.goal-item.editing .cancel-goal {
+  display: flex !important;
 }
 
 /* Coin Celebration Animation */

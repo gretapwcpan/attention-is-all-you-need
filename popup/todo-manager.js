@@ -316,7 +316,48 @@ class TodoManager {
             titleEl.textContent = goal.title;
         }
         
-        // Complete button instead of checkbox
+        // Edit input field
+        const editInput = goalElement.querySelector('.goal-edit-input');
+        if (editInput) {
+            editInput.value = goal.title;
+            editInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    this.saveGoalEdit(goal.id);
+                } else if (e.key === 'Escape') {
+                    this.cancelGoalEdit(goal.id);
+                }
+            });
+        }
+        
+        // Edit button
+        const editBtn = goalElement.querySelector('.edit-goal');
+        if (editBtn) {
+            if (goal.completed) {
+                editBtn.style.display = 'none';
+            } else {
+                editBtn.addEventListener('click', () => {
+                    this.editGoal(goal.id);
+                });
+            }
+        }
+        
+        // Save button
+        const saveBtn = goalElement.querySelector('.save-goal');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => {
+                this.saveGoalEdit(goal.id);
+            });
+        }
+        
+        // Cancel button
+        const cancelBtn = goalElement.querySelector('.cancel-goal');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                this.cancelGoalEdit(goal.id);
+            });
+        }
+        
+        // Complete button
         const completeBtn = goalElement.querySelector('.complete-goal');
         if (completeBtn) {
             if (goal.completed) {
@@ -329,6 +370,7 @@ class TodoManager {
             }
         }
         
+        // Delete button
         const deleteBtn = goalElement.querySelector('.delete-goal');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => {
@@ -340,6 +382,74 @@ class TodoManager {
         if (goalsList) {
             goalsList.appendChild(goalElement);
         }
+    }
+    
+    editGoal(goalId) {
+        // Exit any other edit mode first
+        const allGoalItems = document.querySelectorAll('.goal-item');
+        allGoalItems.forEach(item => {
+            item.classList.remove('editing');
+        });
+        
+        // Enter edit mode for this goal
+        const goalItem = document.querySelector(`[data-goal-id="${goalId}"]`);
+        if (goalItem) {
+            goalItem.classList.add('editing');
+            const editInput = goalItem.querySelector('.goal-edit-input');
+            if (editInput) {
+                editInput.focus();
+                editInput.select();
+            }
+        }
+        
+        this.showMotivationalMessage('📝 Editing mission... Press Enter to save, Escape to cancel.');
+    }
+    
+    saveGoalEdit(goalId) {
+        const goalItem = document.querySelector(`[data-goal-id="${goalId}"]`);
+        if (!goalItem) return;
+        
+        const editInput = goalItem.querySelector('.goal-edit-input');
+        if (!editInput) return;
+        
+        const newTitle = editInput.value.trim();
+        
+        // Validation
+        if (!newTitle) {
+            this.showMotivationalMessage('⚠️ Mission title cannot be empty!');
+            editInput.focus();
+            return;
+        }
+        
+        // Find and update the goal
+        const goal = this.goals.find(g => g.id === goalId);
+        if (goal) {
+            goal.title = newTitle;
+            goal.lastEdited = new Date().toISOString();
+            
+            // Save and re-render
+            this.saveData();
+            this.render();
+            this.showMotivationalMessage('✅ Mission updated successfully!');
+        }
+    }
+    
+    cancelGoalEdit(goalId) {
+        const goalItem = document.querySelector(`[data-goal-id="${goalId}"]`);
+        if (goalItem) {
+            goalItem.classList.remove('editing');
+            
+            // Reset input value to original
+            const goal = this.goals.find(g => g.id === goalId);
+            if (goal) {
+                const editInput = goalItem.querySelector('.goal-edit-input');
+                if (editInput) {
+                    editInput.value = goal.title;
+                }
+            }
+        }
+        
+        this.showMotivationalMessage('❌ Edit cancelled. Mission unchanged.');
     }
     
     triggerCoinCelebration() {

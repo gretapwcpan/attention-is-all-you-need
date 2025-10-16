@@ -1,4 +1,4 @@
-// AI MIND ARCHITECT - Terminal Interface
+// AI MIND READER - Terminal Interface
 
 let todayData = null;
 let sessions = [];

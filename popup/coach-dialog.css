@@ -1,4 +1,4 @@
-/* Terminal/Matrix Style AI MIND ARCHITECT */
+/* Terminal/Matrix Style AI MIND READER */
 
 @import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
 
@@ -122,7 +122,7 @@ body::before {
 }
 
 .coach-header::before {
-  content: '╔════════════════════════════════════════════════╗\A║  AI MIND ARCHITECT - NEURAL TERMINAL v2.0.1   ║\A╚════════════════════════════════════════════════╝';
+  content: '╔════════════════════════════════════════════════╗\A║    AI MIND READER - NEURAL TERMINAL v2.0.1     ║\A╚════════════════════════════════════════════════╝';
   display: block;
   white-space: pre;
   color: var(--terminal-green);
@@ -147,7 +147,7 @@ body::before {
 }
 
 .coach-status::before {
-  content: 'root@mind-architect:~$ ';
+  content: 'root@mind-reader:~$ ';
   color: var(--terminal-green);
 }
 
@@ -446,7 +446,7 @@ body::before {
     content: 'System Ready.';
   }
   100% {
-    content: 'MIND ARCHITECT ONLINE';
+    content: 'MIND READER ONLINE';
   }
 }
 
