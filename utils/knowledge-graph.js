@@ -11,6 +11,9 @@ export class KnowledgeGraph {
     this.aiService = getAIService();
     this.storage = new KnowledgeStorage();
     this.initialized = false;
+    // Processing cache to prevent rapid duplicates (5-minute window)
+    this.processingCache = new Map();
+    this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
   }
 
   async initialize() {
@@ -36,40 +39,251 @@ export class KnowledgeGraph {
     }
 
     try {
-      // 1. Extract concepts from full content
-      const concepts = await this.extractConcepts(pageData, summary);
+      // Normalize URL for better deduplication (remove hash, tracking params, etc.)
+      const normalizedUrl = this.normalizeUrl(pageData.url);
       
-      // 2. Find connections to past learning
-      const connections = await this.findConnections(summary, concepts);
+      // Check processing cache first (prevents rapid duplicates)
+      const cacheKey = normalizedUrl;
+      const cachedTime = this.processingCache.get(cacheKey);
+      if (cachedTime && (Date.now() - cachedTime) < this.CACHE_DURATION) {
+        console.log(`Skipping duplicate processing for ${normalizedUrl} (processed ${Math.round((Date.now() - cachedTime) / 1000)}s ago)`);
+        // Return the existing node if we can find it
+        const existingNode = await this.storage.getNodeByUrl(normalizedUrl, 1); // Check last hour
+        if (existingNode) {
+          return existingNode;
+        }
+        return null; // Skip processing
+      }
       
-      // 3. Create knowledge node
-      const node = {
-        id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        url: pageData.url,
-        title: pageData.title,
-        summary: summary.text || summary, // Handle both object and string
-        concepts: concepts,
-        connections: connections,
-        timestamp: Date.now(),
-        date: new Date().toDateString(),
-        timeSpent: pageData.timeSpent || 0,
-        category: pageData.category || 'General'
-      };
+      // Add to processing cache immediately
+      this.processingCache.set(cacheKey, Date.now());
       
-      // 4. Store node
-      await this.storage.saveNode(node);
+      // Clean old cache entries
+      this.cleanProcessingCache();
       
-      console.log('Knowledge node created:', {
-        title: node.title,
-        concepts: node.concepts,
-        connections: node.connections.length
-      });
+      // Check for existing node with same URL (deduplication)
+      const existingNode = await this.storage.getNodeByUrl(normalizedUrl, 48); // 48 hour window
       
-      return node;
+      if (existingNode) {
+        console.log(`Found existing node for URL: ${pageData.url}, updating instead of creating new`);
+        
+        // Extract new concepts
+        const newConcepts = await this.extractConcepts(pageData, summary);
+        
+        // Merge concepts (combine and deduplicate)
+        const mergedConcepts = this.mergeConcepts(existingNode.concepts, newConcepts);
+        
+        // Find new connections with merged concepts
+        const newConnections = await this.findConnections(summary, mergedConcepts);
+        
+        // Merge connections (keep unique and update strengths)
+        const mergedConnections = this.mergeConnections(existingNode.connections, newConnections);
+        
+        // Prepare updates
+        const updates = {
+          summary: summary.text || summary, // Update with latest summary
+          concepts: mergedConcepts,
+          connections: mergedConnections,
+          timestamp: Date.now(), // Update timestamp to reflect revisit
+          date: new Date().toDateString(),
+          timeSpent: (existingNode.timeSpent || 0) + (pageData.timeSpent || 0), // Accumulate time spent
+          revisitCount: (existingNode.revisitCount || 1) + 1 // Track number of revisits
+        };
+        
+        // Update the existing node
+        await this.storage.updateNode(existingNode.id, updates);
+        
+        console.log('Knowledge node updated:', {
+          title: existingNode.title,
+          revisits: updates.revisitCount,
+          concepts: updates.concepts.length,
+          connections: updates.connections.length,
+          totalTimeSpent: updates.timeSpent
+        });
+        
+        return { ...existingNode, ...updates };
+        
+      } else {
+        // No existing node found, create new one
+        
+        // 1. Extract concepts from full content
+        const concepts = await this.extractConcepts(pageData, summary);
+        
+        // 2. Find connections to past learning
+        const connections = await this.findConnections(summary, concepts);
+        
+        // 3. Create knowledge node with normalized URL
+        const node = {
+          id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          url: normalizedUrl, // Store normalized URL
+          originalUrl: pageData.url, // Keep original URL for reference
+          title: pageData.title,
+          summary: summary.text || summary, // Handle both object and string
+          concepts: concepts,
+          connections: connections,
+          timestamp: Date.now(),
+          date: new Date().toDateString(),
+          timeSpent: pageData.timeSpent || 0,
+          category: pageData.category || 'General',
+          revisitCount: 1 // Initialize revisit count
+        };
+        
+        // 4. Store node
+        await this.storage.saveNode(node);
+        
+        console.log('Knowledge node created:', {
+          title: node.title,
+          concepts: node.concepts,
+          connections: node.connections.length
+        });
+        
+        return node;
+      }
     } catch (error) {
       console.error('Error processing page for knowledge graph:', error);
       throw error;
     }
+  }
+
+  /**
+   * Normalize URL for deduplication
+   * Removes hash, tracking parameters, and standardizes format
+   */
+  normalizeUrl(url) {
+    try {
+      const urlObj = new URL(url);
+      
+      // Remove hash
+      urlObj.hash = '';
+      
+      // Remove common tracking parameters
+      const trackingParams = [
+        'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+        'fbclid', 'gclid', 'ref', 'source', 'track', 'tracking'
+      ];
+      
+      trackingParams.forEach(param => {
+        urlObj.searchParams.delete(param);
+      });
+      
+      // Sort remaining parameters for consistency
+      const sortedParams = new URLSearchParams([...urlObj.searchParams].sort());
+      urlObj.search = sortedParams.toString();
+      
+      // Remove trailing slash
+      let normalized = urlObj.toString();
+      if (normalized.endsWith('/')) {
+        normalized = normalized.slice(0, -1);
+      }
+      
+      return normalized;
+    } catch (error) {
+      console.error('Error normalizing URL:', error);
+      return url; // Return original if normalization fails
+    }
+  }
+  
+  /**
+   * Clean old entries from processing cache
+   */
+  cleanProcessingCache() {
+    const now = Date.now();
+    const entriesToDelete = [];
+    
+    this.processingCache.forEach((timestamp, key) => {
+      if (now - timestamp > this.CACHE_DURATION) {
+        entriesToDelete.push(key);
+      }
+    });
+    
+    entriesToDelete.forEach(key => {
+      this.processingCache.delete(key);
+    });
+    
+    if (entriesToDelete.length > 0) {
+      console.log(`Cleaned ${entriesToDelete.length} old entries from processing cache`);
+    }
+  }
+  
+  /**
+   * Merge concepts from existing and new extractions
+   * Combines and deduplicates concepts intelligently
+   */
+  mergeConcepts(existingConcepts, newConcepts) {
+    const conceptSet = new Set();
+    
+    // Add existing concepts (normalized)
+    existingConcepts.forEach(concept => {
+      conceptSet.add(concept.toLowerCase().trim());
+    });
+    
+    // Track which new concepts are truly new
+    const trulyNewConcepts = [];
+    
+    newConcepts.forEach(concept => {
+      const normalized = concept.toLowerCase().trim();
+      if (!conceptSet.has(normalized)) {
+        trulyNewConcepts.push(concept); // Keep original casing for new concepts
+        conceptSet.add(normalized);
+      }
+    });
+    
+    // Combine existing with truly new concepts
+    const merged = [...existingConcepts, ...trulyNewConcepts];
+    
+    // Limit to reasonable number of concepts
+    if (merged.length > 10) {
+      // Keep most important concepts (existing ones + some new ones)
+      return [...existingConcepts, ...trulyNewConcepts.slice(0, 10 - existingConcepts.length)];
+    }
+    
+    return merged;
+  }
+
+  /**
+   * Merge connections from existing and new analyses
+   * Keeps unique connections and updates strengths
+   */
+  mergeConnections(existingConnections, newConnections) {
+    const connectionMap = new Map();
+    
+    // Add existing connections to map
+    existingConnections.forEach(conn => {
+      connectionMap.set(conn.nodeId, conn);
+    });
+    
+    // Process new connections
+    newConnections.forEach(newConn => {
+      if (connectionMap.has(newConn.nodeId)) {
+        // Connection exists, potentially update strength
+        const existing = connectionMap.get(newConn.nodeId);
+        
+        // Use stronger connection strength
+        const strengthOrder = { strong: 3, medium: 2, weak: 1, none: 0 };
+        if (strengthOrder[newConn.strength] > strengthOrder[existing.strength]) {
+          connectionMap.set(newConn.nodeId, newConn);
+        } else if (newConn.insight && newConn.insight.length > existing.insight.length) {
+          // Keep existing strength but update insight if new one is more detailed
+          connectionMap.set(newConn.nodeId, {
+            ...existing,
+            insight: newConn.insight
+          });
+        }
+      } else {
+        // New connection
+        connectionMap.set(newConn.nodeId, newConn);
+      }
+    });
+    
+    // Convert back to array and sort by strength
+    const merged = Array.from(connectionMap.values());
+    merged.sort((a, b) => {
+      const strengthOrder = { strong: 3, medium: 2, weak: 1, none: 0 };
+      return strengthOrder[b.strength] - strengthOrder[a.strength];
+    });
+    
+    // Limit connections to prevent bloat
+    return merged.slice(0, 15);
   }
 
   /**

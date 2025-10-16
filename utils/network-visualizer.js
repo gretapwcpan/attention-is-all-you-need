@@ -357,17 +357,22 @@ export class NetworkVisualizer {
     const date = new Date(node.timestamp).toLocaleDateString();
     const concepts = (node.concepts || []).slice(0, 5).join(', ');
     
-    return `
-      <div style="padding: 10px; max-width: 300px;">
-        <h4 style="margin: 0 0 8px 0; color: #4A90E2;">${node.title}</h4>
-        <p style="margin: 4px 0; font-size: 12px;">
-          <strong>Category:</strong> ${node.category}<br>
-          <strong>Time Spent:</strong> ${timeSpent} minutes<br>
-          <strong>Date:</strong> ${date}<br>
-          ${concepts ? `<strong>Concepts:</strong> ${concepts}` : ''}
-        </p>
-      </div>
-    `;
+    // Return plain text tooltip for proper display
+    let tooltip = `${node.title}\n`;
+    tooltip += `━━━━━━━━━━━━━━━━━━━━\n`;
+    tooltip += `📁 Category: ${node.category}\n`;
+    tooltip += `⏱️ Time Spent: ${timeSpent} minutes\n`;
+    tooltip += `📅 Date: ${date}`;
+    
+    if (concepts) {
+      tooltip += `\n🏷️ Concepts: ${concepts}`;
+    }
+    
+    if (node.revisitCount && node.revisitCount > 1) {
+      tooltip += `\n🔄 Revisited: ${node.revisitCount} times`;
+    }
+    
+    return tooltip;
   }
   
   convertSessionsToNodes(sessions) {

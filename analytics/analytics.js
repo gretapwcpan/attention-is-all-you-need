@@ -34,6 +34,9 @@ let networkVisualizer = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  // Initialize knowledge modules first
+  await initializeKnowledgeModules();
+  
   await loadAnalytics();
   await loadKnowledgeGraph();
   setupEventListeners();
@@ -41,6 +44,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupGraphControls();
   drawCharts();
 });
+
+// Initialize knowledge modules
+async function initializeKnowledgeModules() {
+  try {
+    console.log('Initializing knowledge modules...');
+    
+    // Initialize storage first
+    await knowledgeStorage.initialize();
+    console.log('Knowledge storage initialized');
+    
+    // Initialize knowledge graph
+    await knowledgeGraph.initialize();
+    console.log('Knowledge graph initialized');
+    
+  } catch (error) {
+    console.error('Error initializing knowledge modules:', error);
+  }
+}
 
 // Load analytics data
 async function loadAnalytics() {
@@ -437,6 +458,12 @@ function setupEventListeners() {
   elements.exportBtn.addEventListener('click', exportData);
   elements.clearBtn.addEventListener('click', clearData);
   
+  // Test knowledge button
+  const testKnowledgeBtn = document.getElementById('testKnowledgeBtn');
+  if (testKnowledgeBtn) {
+    testKnowledgeBtn.addEventListener('click', testKnowledgeExtraction);
+  }
+  
   // Knowledge tab events
   if (elements.searchBtn) {
     elements.searchBtn.addEventListener('click', searchKnowledge);
@@ -526,6 +553,11 @@ function showEmptyState() {
 // Load Knowledge Graph data
 async function loadKnowledgeGraph() {
   try {
+    // Ensure knowledge storage is initialized
+    if (!knowledgeStorage.initialized) {
+      await knowledgeStorage.initialize();
+    }
+    
     // Initialize network visualizer if not already done
     if (!networkVisualizer) {
       networkVisualizer = new NetworkVisualizer('knowledgeNetwork');
@@ -537,6 +569,7 @@ async function loadKnowledgeGraph() {
     
     // Get storage stats
     const stats = await knowledgeStorage.getStats();
+    console.log('Knowledge stats loaded:', stats);
     
     // Update summary cards
     if (elements.nodeCount) {
@@ -604,7 +637,13 @@ async function loadTopConcepts() {
   if (!elements.topConcepts) return;
   
   try {
+    // Ensure storage is initialized
+    if (!knowledgeStorage.initialized) {
+      await knowledgeStorage.initialize();
+    }
+    
     const conceptIndex = await knowledgeStorage.getConceptIndex();
+    console.log('Concept index loaded:', Object.keys(conceptIndex).length, 'concepts');
     
     if (Object.keys(conceptIndex).length === 0) {
       elements.topConcepts.innerHTML = '<div class="empty-state">Concepts will appear as you read articles.</div>';
@@ -651,7 +690,14 @@ async function loadRecentNodes() {
   if (!elements.recentNodes) return;
   
   try {
+    // Ensure storage is initialized
+    if (!knowledgeStorage.initialized) {
+      await knowledgeStorage.initialize();
+    }
+    
     const nodes = await knowledgeStorage.getAllNodes();
+    console.log('All nodes loaded:', nodes.length, 'total nodes');
+    
     let recentNodes = nodes.slice(-20).reverse(); // Get last 20 nodes for deduplication
     
     if (recentNodes.length === 0) {
@@ -833,6 +879,54 @@ function setupGraphControls() {
         console.log('Network visualizer not ready');
       }
     });
+  }
+}
+
+// Test knowledge extraction
+async function testKnowledgeExtraction() {
+  console.log('🧪 Testing knowledge extraction...');
+  
+  try {
+    // Create test data for a sample article
+    const testData = {
+      url: 'https://example.com/test-article',
+      title: 'Understanding Machine Learning Fundamentals',
+      domain: 'example.com',
+      category: 'Learning',
+      duration: 60000, // 60 seconds
+      content: 'This is a test article about machine learning, neural networks, and artificial intelligence. It covers deep learning concepts and practical applications.',
+      headings: ['Introduction to ML', 'Neural Networks', 'Deep Learning', 'Applications'],
+      keywords: 'machine learning, AI, neural networks, deep learning',
+      concepts: ['Machine Learning', 'Neural Networks', 'Deep Learning', 'AI']
+    };
+    
+    // Send test data to service worker
+    const response = await chrome.runtime.sendMessage({
+      action: 'testWebsiteKnowledge',
+      testData: testData
+    });
+    
+    if (response.success) {
+      console.log('✅ Test knowledge extraction successful!');
+      console.log('Created node:', response.node);
+      
+      // Reload knowledge graph to show new data
+      await loadKnowledgeGraph();
+      
+      // Switch to knowledge tab to show results
+      const knowledgeTabBtn = document.querySelector('[data-tab="knowledge"]');
+      if (knowledgeTabBtn) {
+        knowledgeTabBtn.click();
+      }
+      
+      alert('Test knowledge node created successfully! Check the Knowledge Graph tab.');
+    } else {
+      console.error('❌ Test failed:', response.error);
+      alert('Test failed: ' + response.error);
+    }
+  } catch (error) {
+    console.error('❌ Error testing knowledge extraction:', error);
+    alert('Error: ' + error.message);
   }
 }
 

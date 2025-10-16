@@ -139,6 +139,128 @@ export class KnowledgeStorage {
   }
 
   /**
+   * Get node by URL within a time window (for deduplication)
+   * @param {string} url - The URL to search for (should be normalized)
+   * @param {number} hoursWindow - Time window in hours to consider as duplicate (default 48 hours)
+   * @returns {Object|null} - The most recent node with this URL, or null if not found
+   */
+  async getNodeByUrl(url, hoursWindow = 48) {
+    try {
+      const data = await chrome.storage.local.get(this.STORAGE_KEY);
+      const nodes = data[this.STORAGE_KEY] || [];
+      
+      const cutoffTime = Date.now() - (hoursWindow * 60 * 60 * 1000);
+      
+      // Find nodes with matching URL within the time window
+      // Check both url and originalUrl fields for backward compatibility
+      const matchingNodes = nodes.filter(node => 
+        (node.url === url || node.originalUrl === url) && node.timestamp > cutoffTime
+      );
+      
+      if (matchingNodes.length === 0) {
+        return null;
+      }
+      
+      // Return the most recent one
+      matchingNodes.sort((a, b) => b.timestamp - a.timestamp);
+      console.log(`Found existing node for URL: ${url} (${matchingNodes.length} matches)`);
+      return matchingNodes[0];
+      
+    } catch (error) {
+      console.error('Error getting node by URL:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Update an existing node (for deduplication)
+   * @param {string} nodeId - The ID of the node to update
+   * @param {Object} updates - The fields to update
+   */
+  async updateNode(nodeId, updates) {
+    try {
+      const data = await chrome.storage.local.get([
+        this.STORAGE_KEY,
+        this.INDEX_KEY,
+        this.TIMELINE_KEY
+      ]);
+      
+      const nodes = data[this.STORAGE_KEY] || [];
+      const index = data[this.INDEX_KEY] || {};
+      const timeline = data[this.TIMELINE_KEY] || {};
+      
+      // Find the node to update
+      const nodeIndex = nodes.findIndex(node => node.id === nodeId);
+      if (nodeIndex === -1) {
+        console.error(`Node not found: ${nodeId}`);
+        return false;
+      }
+      
+      const oldNode = nodes[nodeIndex];
+      const updatedNode = { ...oldNode, ...updates };
+      
+      // Update concept index if concepts changed
+      if (updates.concepts && JSON.stringify(oldNode.concepts) !== JSON.stringify(updates.concepts)) {
+        // Remove old concepts from index
+        for (const concept of oldNode.concepts) {
+          const normalizedConcept = concept.toLowerCase().trim();
+          if (index[normalizedConcept]) {
+            index[normalizedConcept] = index[normalizedConcept].filter(id => id !== nodeId);
+            if (index[normalizedConcept].length === 0) {
+              delete index[normalizedConcept];
+            }
+          }
+        }
+        
+        // Add new concepts to index
+        for (const concept of updatedNode.concepts) {
+          const normalizedConcept = concept.toLowerCase().trim();
+          if (!index[normalizedConcept]) {
+            index[normalizedConcept] = [];
+          }
+          if (!index[normalizedConcept].includes(nodeId)) {
+            index[normalizedConcept].push(nodeId);
+          }
+        }
+      }
+      
+      // Update timeline if date changed
+      if (updates.date && oldNode.date !== updates.date) {
+        // Remove from old date
+        if (timeline[oldNode.date]) {
+          timeline[oldNode.date] = timeline[oldNode.date].filter(id => id !== nodeId);
+          if (timeline[oldNode.date].length === 0) {
+            delete timeline[oldNode.date];
+          }
+        }
+        
+        // Add to new date
+        if (!timeline[updates.date]) {
+          timeline[updates.date] = [];
+        }
+        timeline[updates.date].push(nodeId);
+      }
+      
+      // Update the node in the array
+      nodes[nodeIndex] = updatedNode;
+      
+      // Save back to storage
+      await chrome.storage.local.set({
+        [this.STORAGE_KEY]: nodes,
+        [this.INDEX_KEY]: index,
+        [this.TIMELINE_KEY]: timeline
+      });
+      
+      console.log(`Updated node: ${updatedNode.title}`);
+      return true;
+      
+    } catch (error) {
+      console.error('Error updating node:', error);
+      return false;
+    }
+  }
+
+  /**
    * Get all nodes
    */
   async getAllNodes() {

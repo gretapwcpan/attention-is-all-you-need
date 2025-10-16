@@ -15,6 +15,10 @@ let sessionStartTime = null;
 let sessionTimer = null;
 let sessionContent = null; // Store content for current session
 
+// Session deduplication cache to prevent multiple sessions for same URL
+const sessionCache = new Map();
+const SESSION_CACHE_DURATION = 10000; // 10 seconds to prevent rapid duplicates
+
 // Initialize AI and summarizer services
 let aiService = null;
 let aiSummarizer = null;
@@ -61,25 +65,66 @@ async function initializeAIServices() {
     await aiSummarizer.initialize();
     console.log('✅ AI Summarizer initialized');
     
-    // Initialize BrowsingTracker with retry
+    // Initialize BrowsingTracker with better error handling and retry
     if (!browsingTracker) {
       try {
+        console.log('🔄 Creating new BrowsingTracker instance...');
         browsingTracker = new BrowsingTracker();
+        console.log('✅ BrowsingTracker instance created');
+        
+        // Try to initialize services with detailed logging
+        console.log('🔄 Initializing BrowsingTracker services...');
         const initResult = await browsingTracker.initializeServices();
+        
         if (initResult) {
           console.log('✅ BrowsingTracker initialized successfully');
         } else {
-          console.log('⚠️ BrowsingTracker initialized with warnings');
+          console.log('⚠️ BrowsingTracker initialized with warnings - will retry');
+          // Schedule a retry after 2 seconds
+          setTimeout(async () => {
+            try {
+              console.log('🔄 Retrying BrowsingTracker initialization...');
+              const retryResult = await browsingTracker.initializeServices();
+              console.log('✅ BrowsingTracker retry result:', retryResult);
+            } catch (retryError) {
+              console.error('❌ BrowsingTracker retry failed:', retryError);
+            }
+          }, 2000);
         }
       } catch (error) {
         console.error('❌ Failed to initialize BrowsingTracker:', error);
-        // Don't set to null - keep the instance even if initialization had issues
-        // browsingTracker = null;
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack
+        });
+        
+        // Keep the instance and try again later
+        if (!browsingTracker) {
+          try {
+            console.log('🔄 Creating BrowsingTracker instance despite error...');
+            browsingTracker = new BrowsingTracker();
+            console.log('✅ BrowsingTracker instance created (will retry initialization)');
+            
+            // Schedule initialization retry
+            setTimeout(async () => {
+              try {
+                console.log('🔄 Delayed initialization attempt for BrowsingTracker...');
+                await browsingTracker.initializeServices();
+                console.log('✅ BrowsingTracker delayed initialization successful');
+              } catch (delayedError) {
+                console.error('⚠️ BrowsingTracker delayed initialization failed:', delayedError);
+              }
+            }, 3000);
+          } catch (instanceError) {
+            console.error('❌ Could not create BrowsingTracker instance:', instanceError);
+          }
+        }
       }
     } else {
       console.log('ℹ️ BrowsingTracker already exists, re-initializing services');
       try {
         await browsingTracker.initializeServices();
+        console.log('✅ BrowsingTracker services re-initialized');
       } catch (error) {
         console.error('⚠️ Error re-initializing BrowsingTracker services:', error);
       }
@@ -162,23 +207,30 @@ async function setInStorage(key, value) {
 
 // Handle tab activation
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
-  console.log('� Tab activated:', activeInfo.tabId);
+  console.log('📌 Tab activated:', activeInfo.tabId);
   
-  // End previous session
-  if (activeTab && sessionStartTime) {
-    console.log('  ↳ Ending previous session for tab:', activeTab.id);
-    await endSession();
-  }
-  
-  // Start new session
+  // Get tab info
   try {
     const tab = await chrome.tabs.get(activeInfo.tabId);
     console.log('  ↳ Tab info:', { id: tab.id, url: tab.url, title: tab.title });
     
-    if (tab && tab.url) {
+    // Check if we already have an active session for this exact URL
+    if (activeTab && activeTab.url === tab.url && activeTab.id === tab.id) {
+      console.log('  ↳ Same tab and URL, continuing existing session');
+      return; // Don't restart session for same URL
+    }
+    
+    // End previous session if different URL
+    if (activeTab && sessionStartTime && activeTab.url !== tab.url) {
+      console.log('  ↳ Ending previous session for tab:', activeTab.id);
+      await endSession();
+    }
+    
+    // Start new session only if URL is valid and different
+    if (tab && tab.url && (!activeTab || activeTab.url !== tab.url)) {
       startSession(tab);
     } else {
-      console.log('  ↳ Tab has no URL, skipping');
+      console.log('  ↳ Tab has no URL or same URL, skipping');
     }
   } catch (error) {
     console.error('❌ Error getting tab:', error);
@@ -187,16 +239,28 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 
 // Handle tab updates
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete') {
-    console.log('🔄 Tab updated:', tabId, 'Status:', changeInfo.status, 'Active:', tab.active);
+  if (changeInfo.status === 'complete' && tab.active) {
+    console.log('🔄 Tab updated:', tabId, 'Status:', changeInfo.status, 'URL:', tab.url);
     
-    if (tab && tab.active) {
-      // End previous session and start new one
-      if (activeTab && sessionStartTime) {
-        console.log('  ↳ Ending session for URL change');
-        await endSession();
+    // Check if this is actually a new URL or just a reload
+    if (activeTab && activeTab.id === tabId && activeTab.url === tab.url) {
+      console.log('  ↳ Same URL, just a reload/update - keeping session');
+      // Update title if changed
+      if (tab.title && activeTab.title !== tab.title) {
+        activeTab.title = tab.title;
       }
-      if (tab.url) {
+      return; // Don't restart session for same URL
+    }
+    
+    // Only process if URL actually changed
+    if (tab && tab.active && tab.url) {
+      // Check if URL is different from active session
+      if (!activeTab || activeTab.url !== tab.url) {
+        // End previous session if exists
+        if (activeTab && sessionStartTime) {
+          console.log('  ↳ URL changed, ending previous session');
+          await endSession();
+        }
         console.log('  ↳ Starting new session for:', tab.url);
         startSession(tab);
       }
@@ -234,6 +298,26 @@ async function startSession(tab) {
     return;
   }
   
+  // Check session cache to prevent rapid duplicate sessions
+  const cacheKey = tab.url;
+  const cachedTime = sessionCache.get(cacheKey);
+  const now = Date.now();
+  
+  if (cachedTime && (now - cachedTime) < SESSION_CACHE_DURATION) {
+    console.log(`  ↳ Session recently started for this URL (${Math.round((now - cachedTime) / 1000)}s ago), skipping duplicate`);
+    return;
+  }
+  
+  // Add to session cache
+  sessionCache.set(cacheKey, now);
+  
+  // Clean old cache entries
+  for (const [url, time] of sessionCache.entries()) {
+    if (now - time > SESSION_CACHE_DURATION * 2) {
+      sessionCache.delete(url);
+    }
+  }
+  
   try {
     activeTab = {
       id: tab.id,
@@ -260,9 +344,16 @@ async function startSession(tab) {
       // Check if tab is still active
       try {
         const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (tabs && tabs.length > 0 && activeTab && tabs[0].id !== activeTab.id) {
-          console.log('  ↳ Tab no longer active, ending session');
-          await endSession();
+        if (tabs && tabs.length > 0 && activeTab) {
+          // Check if active tab changed
+          if (tabs[0].id !== activeTab.id) {
+            console.log('  ↳ Tab no longer active, ending session');
+            await endSession();
+          } else if (tabs[0].url !== activeTab.url) {
+            // URL changed in the same tab
+            console.log('  ↳ URL changed in active tab, ending session');
+            await endSession();
+          }
         }
         
         // Periodically try to get content if we don't have it yet
@@ -380,6 +471,9 @@ async function endSession() {
     durationMs: sessionDuration + 'ms',
     hasContent: !!sessionContent
   });
+  
+  // Update session cache with end time to prevent immediate restart
+  sessionCache.set(activeTab.url, Date.now());
   
   // Try one more time to get content if we don't have it
   if (!sessionContent && activeTab && activeTab.id) {
@@ -806,8 +900,17 @@ async function handleMessage(request, sender, sendResponse) {
         // Test handler for PDF knowledge pipeline
         console.log('🧪 Testing PDF knowledge pipeline...');
         try {
+          // Try to initialize BrowsingTracker if not available
           if (!browsingTracker) {
-            throw new Error('BrowsingTracker not initialized');
+            console.log('⚠️ BrowsingTracker not available, attempting to initialize...');
+            try {
+              browsingTracker = new BrowsingTracker();
+              await browsingTracker.initializeServices();
+              console.log('✅ BrowsingTracker initialized for test');
+            } catch (initError) {
+              console.error('❌ Failed to initialize BrowsingTracker for test:', initError);
+              throw new Error('BrowsingTracker initialization failed: ' + initError.message);
+            }
           }
           
           const testSession = {
@@ -847,8 +950,17 @@ async function handleMessage(request, sender, sendResponse) {
         // Test handler for regular website knowledge pipeline
         console.log('🧪 Testing website knowledge pipeline...');
         try {
+          // Try to initialize BrowsingTracker if not available
           if (!browsingTracker) {
-            throw new Error('BrowsingTracker not initialized');
+            console.log('⚠️ BrowsingTracker not available, attempting to initialize...');
+            try {
+              browsingTracker = new BrowsingTracker();
+              await browsingTracker.initializeServices();
+              console.log('✅ BrowsingTracker initialized for test');
+            } catch (initError) {
+              console.error('❌ Failed to initialize BrowsingTracker for test:', initError);
+              throw new Error('BrowsingTracker initialization failed: ' + initError.message);
+            }
           }
           
           // Prepare concepts from headings and keywords
