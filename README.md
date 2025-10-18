@@ -4,7 +4,7 @@ Transform your browsing into a productive journey with FocusFlow - your digital 
 
 ##  What is FocusFlow?
 
-FocusFlow is a Chrome extension that gamifies your browsing experience to help you build better digital habits. Watch your companion grow through mastery stages as you maintain focus, complete daily goals, and browse with intention.
+FocusFlow is a Chrome extension that gamifies your browsing experience to help you build better digital habits. Watch your attention monster grow through mastery stages as you maintain focus, complete daily goals, and browse with intention.
 
 ## ✨ Key Features
 
@@ -32,7 +32,7 @@ FocusFlow is a Chrome extension that gamifies your browsing experience to help y
 - Complete goals to advance stages
 - Track progress, energy, and knowledge stats
 
-### 🧠 **Knowledge Network**
+###  **Knowledge Network**
 - Automatically build a visual map of what you learn
 - Connect concepts across different articles
 - Search through your reading history intelligently
@@ -61,7 +61,7 @@ FocusFlow is a Chrome extension that gamifies your browsing experience to help y
 
 3. **Start browsing!**
    - Click the FocusFlow icon in your toolbar
-   - Watch your companion and start building better habits
+   - Watch your attention monster and start building better habits
 
 ##  How It Works
 
@@ -73,7 +73,7 @@ FocusFlow tracks three types of focus:
 - **⚪ Light Browsing** (< 5 minutes) - Quick exploration
 
 ### Mastery Stages
-Your companion evolves as you complete goals:
+your attention monster evolves as you complete goals:
 
 1. **Foundation** (Start) - Begin your journey
 2. **Beginner** (1+ goals) - Building habits
@@ -83,7 +83,7 @@ Your companion evolves as you complete goals:
 ### Daily Goals
 - Add meaningful objectives for your day
 - Break them down into actionable tasks
-- Complete goals to boost your companion's progress
+- Complete goals to boost your attention monster's progress
 - Build streaks for consistent productivity
 
 ## 🎮 Tips for Success
@@ -113,7 +113,7 @@ Your companion evolves as you complete goals:
 - You own your browsing data
 - Export/import functionality for backup
 
-## 📈 Use Cases
+##  Use Cases
 
 ### For Students
 - Track research time for projects

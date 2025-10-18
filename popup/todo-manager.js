@@ -10,7 +10,6 @@ class TodoManager {
         this.setupEventListeners();
         this.render();
         this.updateProgress();
-        this.showMotivationalMessage('Mission Control Online. Ready for objectives.');
     }
 
     setupEventListeners() {
@@ -104,7 +103,6 @@ class TodoManager {
         this.updateProgress();
         
         input.value = '';
-        this.showMotivationalMessage(' New mission deployed! Stay focused on your objective.');
     }
 
     async toggleGoal(goalId) {
