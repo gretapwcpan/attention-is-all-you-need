@@ -64,6 +64,9 @@ async function addFocusPoints(amount) {
   await chrome.storage.local.set({ userXP });
   updateXPDisplay();
   showPointsGain(amount);
+  
+  // Check for evolution when XP changes
+  checkXPBasedEvolution(userXP);
 }
 
 function updateXPDisplay() {
@@ -115,7 +118,7 @@ let tamagotchiPet = null;
 async function initTamagotchi() {
   try {
     // Load pet data from storage
-    const data = await chrome.storage.local.get('tamagotchiPet');
+    const data = await chrome.storage.local.get(['tamagotchiPet', 'userXP']);
     if (data.tamagotchiPet) {
       tamagotchiPet = data.tamagotchiPet;
     } else {
@@ -138,6 +141,10 @@ async function initTamagotchi() {
       await chrome.storage.local.set({ tamagotchiPet });
     }
     
+    // Check XP-based evolution immediately
+    const currentXP = data.userXP || 0;
+    checkXPBasedEvolution(currentXP);
+    
     updatePetDisplay();
     
     // Update pet stats periodically
@@ -147,6 +154,14 @@ async function initTamagotchi() {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'missionCompleted') {
         onMissionComplete();
+      }
+    });
+    
+    // Also listen for storage changes to detect XP updates
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'local' && changes.userXP) {
+        const newXP = changes.userXP.newValue || 0;
+        checkXPBasedEvolution(newXP);
       }
     });
     
@@ -262,14 +277,8 @@ async function onMissionComplete() {
   tamagotchiPet.stats.knowledge = Math.min(100, tamagotchiPet.stats.knowledge + 5);
   tamagotchiPet.mood = 'excited';
   
-  // Check for mastery stage advancement
-  if (tamagotchiPet.goalsCompleted >= 16) {
-    tamagotchiPet.stage = 'adult'; // Master stage
-  } else if (tamagotchiPet.goalsCompleted >= 6) {
-    tamagotchiPet.stage = 'teen'; // Intermediate stage
-  } else if (tamagotchiPet.goalsCompleted >= 1) {
-    tamagotchiPet.stage = 'baby'; // Beginner stage
-  }
+  // XP-based evolution is now handled by checkXPBasedEvolution()
+  // which is triggered by storage changes when XP is updated
   
   // Add celebration animation
   const petAnimation = document.getElementById('petAnimation');
@@ -283,11 +292,91 @@ async function onMissionComplete() {
   await chrome.storage.local.set({ tamagotchiPet });
   updatePetDisplay();
   
+  // Award XP points for mission completion (5 XP per mission)
+  await addFocusPoints(5);
+  
   // Reset mood after a few seconds
   setTimeout(() => {
     tamagotchiPet.mood = 'happy';
     updatePetDisplay();
   }, 5000);
+}
+
+// New function to check XP-based evolution
+function checkXPBasedEvolution(xp) {
+  if (!tamagotchiPet) return;
+  
+  let newStage = tamagotchiPet.stage;
+  
+  // XP-based evolution thresholds
+  if (xp >= 50) {
+    newStage = 'adult'; // Master stage at 50 XP
+  } else if (xp >= 20) {
+    newStage = 'teen'; // Intermediate stage at 20 XP
+  } else if (xp >= 5) {
+    newStage = 'baby'; // Beginner stage at 5 XP
+  } else {
+    newStage = 'foundation'; // Foundation/egg stage below 5 XP
+  }
+  
+  // If stage changed, update and save
+  if (newStage !== tamagotchiPet.stage) {
+    const oldStage = tamagotchiPet.stage;
+    tamagotchiPet.stage = newStage;
+    
+    // Boost stats on evolution
+    if (newStage !== 'foundation') {
+      tamagotchiPet.stats.progress = Math.min(100, tamagotchiPet.stats.progress + 30);
+      tamagotchiPet.stats.happiness = tamagotchiPet.stats.progress;
+      tamagotchiPet.stats.energy = Math.min(100, tamagotchiPet.stats.energy + 20);
+      tamagotchiPet.mood = 'excited';
+      
+      // Show evolution message
+      showEvolutionMessage(oldStage, newStage);
+    }
+    
+    chrome.storage.local.set({ tamagotchiPet });
+    updatePetDisplay();
+  }
+}
+
+// Show evolution celebration message
+function showEvolutionMessage(oldStage, newStage) {
+  const stageNames = {
+    'foundation': 'Foundation',
+    'egg': 'Foundation',
+    'baby': 'Beginner',
+    'teen': 'Intermediate',
+    'adult': 'Master'
+  };
+  
+  const message = `🎉 Evolution! Your companion evolved from ${stageNames[oldStage]} to ${stageNames[newStage]}!`;
+  
+  // Create evolution notification
+  const notification = document.createElement('div');
+  notification.className = 'evolution-notification';
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 10px;
+    font-family: 'Orbitron', monospace;
+    font-weight: bold;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 10000;
+    animation: slide-down 0.5s ease-out;
+  `;
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slide-up 0.5s ease-out';
+    setTimeout(() => notification.remove(), 500);
+  }, 3000);
 }
 
 // Link focus states to pet energy

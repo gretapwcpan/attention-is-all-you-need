@@ -114,8 +114,8 @@ class TodoManager {
             goal.completedAt = new Date().toISOString();
             this.showMotivationalMessage(this.getCompletionMessage(goal));
             
-            // Award 1 XP for completing a mission
-            await this.awardXP(1);
+            // Award 5 XP for completing a mission (to match popup.js)
+            await this.awardXP(5);
             
             // Notify Tamagotchi pet about mission completion
             if (chrome.runtime && chrome.runtime.sendMessage) {
