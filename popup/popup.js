@@ -1,4 +1,4 @@
-// Attention Is All You Need - Popup JavaScript
+// FocusFlow - Popup JavaScript
 
 // DOM Elements
 const elements = {
@@ -59,11 +59,11 @@ async function loadXP() {
   }
 }
 
-async function addXP(amount) {
+async function addFocusPoints(amount) {
   userXP += amount;
   await chrome.storage.local.set({ userXP });
   updateXPDisplay();
-  showXPGain(amount);
+  showPointsGain(amount);
 }
 
 function updateXPDisplay() {
@@ -94,14 +94,14 @@ function updateXPDisplay() {
   const xpNext = document.getElementById('xpNext');
   if (xpNext) {
     const xpNeeded = xpForNextLevel - xpInCurrentLevel;
-    xpNext.textContent = `${xpNeeded} XP to level ${level + 1}`;
+    xpNext.textContent = `${xpNeeded} points to level ${level + 1}`;
   }
 }
 
-function showXPGain(amount) {
+function showPointsGain(amount) {
   const xpGain = document.createElement('div');
   xpGain.className = 'xp-gain';
-  xpGain.textContent = `+${amount} XP`;
+  xpGain.textContent = `+${amount} Points`;
   document.body.appendChild(xpGain);
   
   setTimeout(() => {
@@ -119,18 +119,18 @@ async function initTamagotchi() {
     if (data.tamagotchiPet) {
       tamagotchiPet = data.tamagotchiPet;
     } else {
-      // Create new pet
+      // Create new companion
       tamagotchiPet = {
-        name: 'Focus Buddy',
-        stage: 'egg',
+        name: 'Focus Companion',
+        stage: 'foundation',
         born: Date.now(),
         stats: {
-          happiness: 50,
+          progress: 50,
           energy: 50,
           knowledge: 0,
           health: 100
         },
-        missionsCompleted: 0,
+        goalsCompleted: 0,
         totalFocusTime: 0,
         mood: 'neutral',
         isAlive: true
@@ -161,14 +161,23 @@ function updatePetDisplay() {
   // Use SVG images for pet stages
   const petSprite = document.getElementById('petSprite');
   if (petSprite) {
-    const imagePath = `image/${tamagotchiPet.stage}.svg`;
+    // Map foundation stage to egg image
+    const imageStage = tamagotchiPet.stage === 'foundation' ? 'egg' : tamagotchiPet.stage;
+    const imagePath = `image/${imageStage}.svg`;
     petSprite.innerHTML = `<img src="${imagePath}" alt="${tamagotchiPet.stage}" class="pet-image ${tamagotchiPet.mood}">`;
   }
   
-  // Update pet stage
+  // Update mastery stage
   const petStage = document.getElementById('petStage');
   if (petStage) {
-    petStage.textContent = `[${tamagotchiPet.stage.toUpperCase()}]`;
+    const stageNames = {
+      'foundation': 'FOUNDATION',
+      'egg': 'FOUNDATION',
+      'baby': 'BEGINNER',
+      'teen': 'INTERMEDIATE',
+      'adult': 'MASTER'
+    };
+    petStage.textContent = `[${stageNames[tamagotchiPet.stage] || tamagotchiPet.stage.toUpperCase()}]`;
   }
   
   // Update pet message
@@ -178,7 +187,7 @@ function updatePetDisplay() {
   }
   
   // Update stats bars
-  updateStatBar('happiness', tamagotchiPet.stats.happiness);
+  updateStatBar('happiness', tamagotchiPet.stats.progress || tamagotchiPet.stats.happiness);
   updateStatBar('energy', tamagotchiPet.stats.energy);
   updateStatBar('knowledge', tamagotchiPet.stats.knowledge);
 }
@@ -196,37 +205,39 @@ function updateStatBar(stat, value) {
 }
 
 function getPetMessage() {
-  if (tamagotchiPet.stage === 'egg' && tamagotchiPet.missionsCompleted === 0) {
-    return 'Complete your first mission to hatch me!';
+  if ((tamagotchiPet.stage === 'foundation' || tamagotchiPet.stage === 'egg') && tamagotchiPet.goalsCompleted === 0) {
+    return 'Complete your first goal to begin your journey!';
   }
   
   switch (tamagotchiPet.mood) {
     case 'sad':
-      return 'I need some attention... Complete a mission to cheer me up!';
+      return 'I need some attention... Complete a goal to boost progress!';
     case 'sleeping':
-      return 'Zzz... Taking a quick nap...';
+      return 'Zzz... Taking a quick rest...';
     case 'studying':
-      return 'Learning new things with you!';
+      return 'Learning and growing with you!';
     case 'excited':
-      return 'Yay! Great job on that mission!';
+      return 'Excellent work on that goal!';
     case 'happy':
-      return "I'm feeling great! Keep up the good work!";
+      return "Making great progress! Keep it up!";
     default:
-      return `${tamagotchiPet.missionsCompleted} missions completed! Let's do more!`;
+      return `${tamagotchiPet.goalsCompleted || tamagotchiPet.missionsCompleted || 0} goals completed! Let's achieve more!`;
   }
 }
 
 function updatePetStats() {
   if (!tamagotchiPet) return;
   
-  // Decrease happiness and energy over time
-  tamagotchiPet.stats.happiness = Math.max(0, tamagotchiPet.stats.happiness - 1);
+  // Decrease progress and energy over time
+  const progressStat = tamagotchiPet.stats.progress || tamagotchiPet.stats.happiness;
+  tamagotchiPet.stats.progress = Math.max(0, progressStat - 1);
+  tamagotchiPet.stats.happiness = tamagotchiPet.stats.progress; // Keep for compatibility
   tamagotchiPet.stats.energy = Math.max(0, tamagotchiPet.stats.energy - 1);
   
   // Update mood based on stats
-  if (tamagotchiPet.stats.happiness < 20) {
+  if (tamagotchiPet.stats.progress < 20) {
     tamagotchiPet.mood = 'sad';
-  } else if (tamagotchiPet.stats.happiness > 80) {
+  } else if (tamagotchiPet.stats.progress > 80) {
     tamagotchiPet.mood = 'happy';
   } else if (tamagotchiPet.stats.energy < 20) {
     tamagotchiPet.mood = 'sleeping';
@@ -242,19 +253,22 @@ function updatePetStats() {
 async function onMissionComplete() {
   if (!tamagotchiPet) return;
   
-  tamagotchiPet.missionsCompleted++;
-  tamagotchiPet.stats.happiness = Math.min(100, tamagotchiPet.stats.happiness + 20);
+  const goalsCount = tamagotchiPet.goalsCompleted || tamagotchiPet.missionsCompleted || 0;
+  tamagotchiPet.goalsCompleted = goalsCount + 1;
+  tamagotchiPet.missionsCompleted = tamagotchiPet.goalsCompleted; // Keep for compatibility
+  tamagotchiPet.stats.progress = Math.min(100, (tamagotchiPet.stats.progress || tamagotchiPet.stats.happiness || 50) + 20);
+  tamagotchiPet.stats.happiness = tamagotchiPet.stats.progress; // Keep for compatibility
   tamagotchiPet.stats.energy = Math.min(100, tamagotchiPet.stats.energy + 10);
   tamagotchiPet.stats.knowledge = Math.min(100, tamagotchiPet.stats.knowledge + 5);
   tamagotchiPet.mood = 'excited';
   
-  // Check for evolution
-  if (tamagotchiPet.missionsCompleted >= 16) {
-    tamagotchiPet.stage = 'adult';
-  } else if (tamagotchiPet.missionsCompleted >= 6) {
-    tamagotchiPet.stage = 'teen';
-  } else if (tamagotchiPet.missionsCompleted >= 1) {
-    tamagotchiPet.stage = 'baby';
+  // Check for mastery stage advancement
+  if (tamagotchiPet.goalsCompleted >= 16) {
+    tamagotchiPet.stage = 'adult'; // Master stage
+  } else if (tamagotchiPet.goalsCompleted >= 6) {
+    tamagotchiPet.stage = 'teen'; // Intermediate stage
+  } else if (tamagotchiPet.goalsCompleted >= 1) {
+    tamagotchiPet.stage = 'baby'; // Beginner stage
   }
   
   // Add celebration animation
@@ -298,9 +312,9 @@ function updatePetWithFocusState() {
 // Note: AI summaries feature has been removed as the DOM elements no longer exist
 // This functionality has been replaced by the Tamagotchi pet system
 
-// Ask AI MIND READER for help - opens dialog window
+// Open FocusFlow Insights dialog window
 async function askAICoach() {
-  // Open the AI MIND READER dialog in a new window
+  // Open the FocusFlow Insights dialog in a new window
   chrome.windows.create({
     url: chrome.runtime.getURL('popup/coach-dialog.html'),
     type: 'popup',
@@ -794,7 +808,7 @@ function setupEventListeners() {
     });
   }
   
-  // AI MIND READER button
+  // FocusFlow Insights button
   if (elements.askCoach) {
     elements.askCoach.addEventListener('click', () => {
       chrome.windows.create({
@@ -808,7 +822,7 @@ function setupEventListeners() {
     });
   }
   
-  // Missions (Todo) button
+  // Daily Goals button
   if (elements.viewTodos) {
     elements.viewTodos.addEventListener('click', () => {
       chrome.tabs.create({ url: chrome.runtime.getURL('popup/todo-manager.html') });

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Focus Forge Matrix</title>
+    <title>FocusFlow - Analytics Dashboard</title>
     <link rel="stylesheet" href="analytics.css">
     <!-- Vis.js Network Graph Library (Local) -->
     <link href="../libs/vis-network.min.css" rel="stylesheet" type="text/css" />
@@ -12,26 +12,25 @@
 <body>
     <div class="container">
         <header class="header">
-            <button class="back-btn" id="backBtn">← BACK</button>
-            <h1>Focus Forge Matrix</h1>
+            <button class="back-btn" id="backBtn">← Back</button>
+            <h1>FocusFlow Analytics Dashboard </h1>
             <div class="header-actions">
-                <button id="testKnowledgeBtn" class="btn btn-primary">Test Knowledge</button>
-                <button id="exportBtn" class="btn btn-secondary">Export Data</button>
-                <button id="clearBtn" class="btn btn-danger">Clear All Data</button>
+            <button id="exportBtn" class="btn btn-secondary">Export Data</button>
+            <button id="clearBtn" class="btn btn-danger">Reset All</button>
             </div>
         </header>
 
         <!-- Tab Navigation -->
         <nav class="tab-nav">
             <button class="tab-btn active" data-tab="analytics">Analytics</button>
-            <button class="tab-btn" data-tab="knowledge">Knowledge Graph</button>
+            <button class="tab-btn" data-tab="knowledge">Knowledge Base</button>
         </nav>
 
         <div class="dashboard" id="analyticsTab">
             <!-- Summary Cards -->
             <section class="summary-cards">
                 <div class="card">
-                    <div class="card-label">Total Time Today</div>
+                    <div class="card-label">Today's Focus</div>
                     <div class="card-value" id="totalTime">0h 0m</div>
                 </div>
                 <div class="card">
@@ -50,7 +49,7 @@
 
             <!-- Weekly Trend Chart -->
             <section class="chart-section">
-                <h2>Weekly Trend</h2>
+                <h2>📅 Weekly Trends</h2>
                 <div class="chart" id="weeklyChart">
                     <canvas id="weeklyCanvas"></canvas>
                 </div>
@@ -58,7 +57,7 @@
 
             <!-- Category Distribution -->
             <section class="chart-section">
-                <h2>Category Distribution</h2>
+                <h2> Focus Distribution</h2>
                 <div class="chart" id="categoryChart">
                     <canvas id="categoryCanvas"></canvas>
                 </div>
@@ -66,25 +65,25 @@
 
             <!-- Focus State Distribution -->
             <section class="chart-section">
-                <h2>Mind State Distribution</h2>
+                <h2> Focus Quality</h2>
                 <div class="focus-distribution" id="focusDistribution">
                     <div class="focus-bar-container">
                         <div class="focus-bar-item">
-                            <div class="focus-bar-label">[DEEP]</div>
+                            <div class="focus-bar-label">Deep Focus</div>
                             <div class="focus-bar-wrapper">
                                 <div class="focus-bar focus-deep" id="deepBar"></div>
                             </div>
                             <div class="focus-bar-value" id="deepValue">0m</div>
                         </div>
                         <div class="focus-bar-item">
-                            <div class="focus-bar-label">[ACTIVE]</div>
+                            <div class="focus-bar-label">Active Focus</div>
                             <div class="focus-bar-wrapper">
                                 <div class="focus-bar focus-active" id="activeBar"></div>
                             </div>
                             <div class="focus-bar-value" id="activeValue">0m</div>
                         </div>
                         <div class="focus-bar-item">
-                            <div class="focus-bar-label">[SCAN]</div>
+                            <div class="focus-bar-label">Light Browsing</div>
                             <div class="focus-bar-wrapper">
                                 <div class="focus-bar focus-scanning" id="scanBar"></div>
                             </div>
@@ -96,25 +95,25 @@
 
             <!-- Top Sites -->
             <section class="list-section">
-                <h2>Top Sites Today</h2>
+                <h2> Top Sites Today</h2>
                 <div id="topSites" class="list-container">
-                    <div class="empty-state">No data yet. Start browsing to see analytics.</div>
+                    <div class="empty-state">No data yet. Start browsing with focus to see your analytics!</div>
                 </div>
             </section>
 
             <!-- Recent Sessions -->
             <section class="list-section">
-                <h2>Recent Sessions</h2>
+                <h2>⏰ Recent Sessions</h2>
                 <div id="recentSessions" class="list-container">
-                    <div class="empty-state">No sessions recorded yet.</div>
+                    <div class="empty-state">Your browsing sessions will appear here.</div>
                 </div>
             </section>
 
             <!-- Insights -->
             <section class="insights-section">
-                <h2>Insights & Recommendations</h2>
+                <h2> Insights & Recommendations</h2>
                 <div id="insights" class="insights-container">
-                    <div class="empty-state">Insights will appear as you browse.</div>
+                    <div class="empty-state">Personalized insights will appear as you browse.</div>
                 </div>
             </section>
         </div>
@@ -124,7 +123,7 @@
             <!-- Knowledge Summary Cards -->
             <section class="summary-cards">
                 <div class="card">
-                    <div class="card-label">Knowledge Nodes</div>
+                    <div class="card-label">Articles Read</div>
                     <div class="card-value" id="nodeCount">0</div>
                 </div>
                 <div class="card">
@@ -132,7 +131,7 @@
                     <div class="card-value" id="conceptCount">0</div>
                 </div>
                 <div class="card">
-                    <div class="card-label">Connections</div>
+                    <div class="card-label">Connections Made</div>
                     <div class="card-value" id="connectionCount">0</div>
                 </div>
                 <div class="card">
@@ -143,9 +142,9 @@
 
             <!-- Search Knowledge -->
             <section class="knowledge-search">
-                <h2>Search Your Knowledge</h2>
+                <h2>🔍 Search Your Knowledge</h2>
                 <div class="search-container">
-                    <input type="text" id="knowledgeSearch" placeholder="Search concepts, articles, or topics..." class="search-input">
+                    <input type="text" id="knowledgeSearch" placeholder="Search what you've learned..." class="search-input">
                     <button id="searchBtn" class="btn btn-primary">Search</button>
                 </div>
                 <div id="searchResults" class="search-results"></div>
@@ -153,43 +152,43 @@
 
             <!-- Knowledge Network Graph -->
             <section class="chart-section">
-                <h2>Knowledge Network</h2>
+                <h2>🌐 Your Knowledge Network</h2>
                 <div class="graph-controls">
                     <button class="graph-btn" id="resetGraphBtn">Reset View</button>
-                    <button class="graph-btn" id="togglePhysicsBtn">Toggle Physics</button>
+                    <button class="graph-btn" id="togglePhysicsBtn">Toggle Animation</button>
                     <select id="graphFilter" class="graph-filter">
-                        <option value="all">All Nodes</option>
+                        <option value="all">All Knowledge</option>
                         <option value="today">Today</option>
                         <option value="week">This Week</option>
                         <option value="month">This Month</option>
                     </select>
                 </div>
                 <div id="knowledgeNetwork" class="network-container" style="height: 500px; border: 1px solid #333; border-radius: 8px; background: #0a0a0a;">
-                    <div class="empty-state">Your knowledge graph will appear here.</div>
+                    <div class="empty-state">Your knowledge network will appear here as you read articles.</div>
                 </div>
             </section>
 
-            <!-- Recent Learning (moved from bottom) -->
+            <!-- Recent Learning -->
             <section class="list-section">
-                <h2>Recent Learning</h2>
+                <h2>📚 Recent Learning</h2>
                 <div id="recentNodes" class="list-container">
-                    <div class="empty-state">Your recent learning will appear here.</div>
+                    <div class="empty-state">Your recent articles and summaries will appear here.</div>
                 </div>
             </section>
 
             <!-- Top Concepts -->
             <section class="list-section">
-                <h2>Top Concepts</h2>
+                <h2>🏷️ Top Topics</h2>
                 <div id="topConcepts" class="concept-cloud">
-                    <div class="empty-state">Concepts will appear as you read articles.</div>
+                    <div class="empty-state">Topics will appear as you read and learn.</div>
                 </div>
             </section>
 
             <!-- Learning Insights -->
             <section class="insights-section">
-                <h2>Learning Insights</h2>
+                <h2>🎓 Learning Insights</h2>
                 <div id="learningInsights" class="insights-container">
-                    <div class="empty-state">Insights about your learning will appear here.</div>
+                    <div class="empty-state">Insights about your learning journey will appear here.</div>
                 </div>
             </section>
         </div>

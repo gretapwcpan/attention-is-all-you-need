@@ -249,7 +249,7 @@ async function generateAIResponse(userMessage) {
     const readingContext = buildReadingContext();
     
     // Create a comprehensive prompt with full conversation history
-    const prompt = `You are an AI Reading Coach helping users understand and remember what they read. Be helpful, specific, and action-oriented.
+    const prompt = `You are a user mind reader (browsing behavior) helping users understand and remember what they read. Be helpful, specific, and action-oriented.
 
 Current Reading Context:
 ${readingContext}
@@ -271,7 +271,7 @@ Response:`;
 
     // Add options for language specification
     const options = {
-      systemPrompt: "You are an AI Reading Coach helping users understand and remember what they read. Always respond in English only.",
+      systemPrompt: "You are an user mind (browsing behavior) reader helping users understand and remember what they read. Always respond in English only.",
       temperature: 0.8,
       topK: 40
     };

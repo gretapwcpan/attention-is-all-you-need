@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI MIND READER - Terminal Interface</title>
+    <title>FocusFlow - Insights</title>
     <link rel="stylesheet" href="coach-dialog.css">
 </head>
 <body>
@@ -12,38 +12,38 @@
     
     <div class="coach-dialog">
         <div class="coach-header">
-            <div class="coach-avatar">AI</div>
+            <div class="coach-avatar"></div>
             <div class="coach-info">
-                <h2>AI MIND READER</h2>
-                <span class="coach-status" id="coachStatus">SYSTEM ONLINE</span>
+                <h2>FocusFlow Insights</h2>
+                <span class="coach-status" id="coachStatus">Ready to help you focus!</span>
             </div>
         </div>
         
         <div class="coach-messages" id="coachMessages">
             <!-- Boot sequence message -->
             <div class="message coach">
-                <span>Initializing Neural Terminal v2.0.1...</span>
+                <span>Welcome to FocusFlow Insights! </span>
             </div>
             <div class="message coach">
-                <span>Loading AI modules... [OK]</span>
+                <span>Analyzing your browsing patterns... ✓</span>
             </div>
             <div class="message coach">
-                <span>Establishing secure connection... [OK]</span>
+                <span>AI mind reader ready... ✓</span>
             </div>
             <div class="message coach">
-                <span>MIND READER ONLINE. How may I assist you?</span>
+                <span>How can I help you improve your focus today?</span>
             </div>
         </div>
         
         <div class="coach-input">
-            <input type="text" id="userInput" placeholder="type command..." />
-            <button id="sendButton">[EXECUTE]</button>
+            <input type="text" id="userInput" placeholder="Ask me anything..." />
+            <button id="sendButton">Send</button>
         </div>
         
         <div class="coach-actions">
-            <button id="getSummaryBtn" class="action-btn">SUMMARY</button>
-            <button id="getInsightsBtn" class="action-btn">INSIGHTS</button>
-            <button id="closeBtn" class="action-btn secondary">EXIT</button>
+            <button id="getSummaryBtn" class="action-btn"> Today's Summary</button>
+            <button id="getInsightsBtn" class="action-btn"> Get Insights</button>
+            <button id="closeBtn" class="action-btn secondary">Close</button>
         </div>
     </div>
     

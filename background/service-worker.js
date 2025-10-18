@@ -1,4 +1,5 @@
-// Attention Is All You Need - Background Service Worker
+// FocusFlow - Background Service Worker
+// Roam Less. Gather More.
 
 // Import AI and character modules
 import { getAIService } from '../utils/ai-service.js';
@@ -481,8 +482,8 @@ async function endSession() {
     await getPageContent(activeTab.id, 2);
   }
   
-  // TEMPORARILY REDUCED: Track sessions longer than 1 second for debugging
-  if (sessionDuration > 1000) {
+  // Track sessions longer than 5 seconds
+  if (sessionDuration > 5000) {
     // Check if this is a PDF URL and extract information if it is
     let pdfInfo = null;
     if (pdfExtractor && pdfExtractor.isPDFUrl(activeTab.url)) {
@@ -894,130 +895,6 @@ async function handleMessage(request, sender, sendResponse) {
       case 'exportData':
         const allData = await chrome.storage.local.get(null);
         sendResponse({ success: true, data: allData });
-        break;
-        
-      case 'testPDFKnowledge':
-        // Test handler for PDF knowledge pipeline
-        console.log('🧪 Testing PDF knowledge pipeline...');
-        try {
-          // Try to initialize BrowsingTracker if not available
-          if (!browsingTracker) {
-            console.log('⚠️ BrowsingTracker not available, attempting to initialize...');
-            try {
-              browsingTracker = new BrowsingTracker();
-              await browsingTracker.initializeServices();
-              console.log('✅ BrowsingTracker initialized for test');
-            } catch (initError) {
-              console.error('❌ Failed to initialize BrowsingTracker for test:', initError);
-              throw new Error('BrowsingTracker initialization failed: ' + initError.message);
-            }
-          }
-          
-          const testSession = {
-            ...request.testData,
-            startTime: Date.now() - request.testData.duration,
-            endTime: Date.now(),
-            focusType: 'deep',
-            content: 'Test content for knowledge extraction',
-            pdfMetadata: {
-              type: 'research_paper',
-              source: 'arxiv',
-              title: request.testData.title,
-              concepts: request.testData.concepts || [],
-              paperId: 'test-2407.06204'
-            }
-          };
-          
-          // Process through browsing tracker
-          const result = await browsingTracker.addSession(testSession);
-          
-          // Check if knowledge node was created
-          const nodes = await chrome.storage.local.get(['knowledge_nodes']);
-          const latestNode = nodes.knowledge_nodes ? nodes.knowledge_nodes[nodes.knowledge_nodes.length - 1] : null;
-          
-          sendResponse({ 
-            success: true, 
-            node: latestNode,
-            sessionAdded: !!result
-          });
-        } catch (error) {
-          console.error('❌ Test failed:', error);
-          sendResponse({ success: false, error: error.message });
-        }
-        break;
-        
-      case 'testWebsiteKnowledge':
-        // Test handler for regular website knowledge pipeline
-        console.log('🧪 Testing website knowledge pipeline...');
-        try {
-          // Try to initialize BrowsingTracker if not available
-          if (!browsingTracker) {
-            console.log('⚠️ BrowsingTracker not available, attempting to initialize...');
-            try {
-              browsingTracker = new BrowsingTracker();
-              await browsingTracker.initializeServices();
-              console.log('✅ BrowsingTracker initialized for test');
-            } catch (initError) {
-              console.error('❌ Failed to initialize BrowsingTracker for test:', initError);
-              throw new Error('BrowsingTracker initialization failed: ' + initError.message);
-            }
-          }
-          
-          // Prepare concepts from headings and keywords
-          let extractedConcepts = [];
-          if (request.testData.headings && request.testData.headings.length > 0) {
-            extractedConcepts = request.testData.headings.slice(0, 5);
-          }
-          if (request.testData.keywords) {
-            const keywords = request.testData.keywords.split(',').map(k => k.trim()).filter(k => k);
-            extractedConcepts = [...new Set([...extractedConcepts, ...keywords])].slice(0, 10);
-          }
-          
-          const testSession = {
-            ...request.testData,
-            startTime: Date.now() - request.testData.duration,
-            endTime: Date.now(),
-            focusType: 'deep',
-            content: request.testData.content || 'Test content for knowledge extraction',
-            concepts: extractedConcepts,
-            hasContent: true,
-            isPDF: false,
-            pdfMetadata: null
-          };
-          
-          console.log('📝 Website test session prepared:', {
-            title: testSession.title,
-            hasContent: !!testSession.content,
-            contentLength: testSession.content.length,
-            conceptCount: testSession.concepts.length,
-            concepts: testSession.concepts
-          });
-          
-          // Process through browsing tracker
-          const result = await browsingTracker.addSession(testSession);
-          
-          // Wait a bit for processing to complete
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          // Check if knowledge node was created
-          const nodes = await chrome.storage.local.get(['knowledge_nodes']);
-          const latestNode = nodes.knowledge_nodes ? nodes.knowledge_nodes[nodes.knowledge_nodes.length - 1] : null;
-          
-          console.log('📊 Website test result:', {
-            sessionAdded: !!result,
-            nodeCreated: !!latestNode,
-            nodeTitle: latestNode?.title
-          });
-          
-          sendResponse({ 
-            success: true, 
-            node: latestNode,
-            sessionAdded: !!result
-          });
-        } catch (error) {
-          console.error('❌ Website test failed:', error);
-          sendResponse({ success: false, error: error.message });
-        }
         break;
         
       default:

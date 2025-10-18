@@ -37,7 +37,7 @@ class AISummarizer {
     
     // Create a focused prompt for summarization
     const prompt = `
-      You are an AI reading coach helping a user understand what they just read.
+      You are an user mind (browsing behavior) reader helping a user understand what they just read.
       
       Page Title: ${title}
       Time Spent: ${Math.round(timeSpent / 60000)} minutes
@@ -56,7 +56,7 @@ class AISummarizer {
     try {
       // Include language specification to avoid warnings
       const options = {
-        systemPrompt: "You are an AI reading coach helping users understand what they read. Please respond in English."
+        systemPrompt: "You are an user mind (browsing behavior) reader helping users understand what they read. Please respond in English."
       };
       const summary = await this.aiService.generateText(prompt, options);
       return {

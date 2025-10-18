@@ -193,7 +193,7 @@ class TodoAIMapper {
         chrome.notifications.create(notificationId, {
             type: 'basic',
             iconUrl: chrome.runtime.getURL('icons/icon128.png'),
-            title: '🎯 Working on Todo',
+            title: ' Working on Todo',
             message: `Detected: "${todo.title}" from goal "${goal.title}"`,
             buttons: [
                 { title: 'Mark Complete' },

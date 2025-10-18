@@ -99,11 +99,29 @@ function updateSummaryCards(data) {
   const score = calculateFocusScore(data);
   elements.focusScore.textContent = score > 0 ? score : '--';
   
-  // Sites count
-  elements.sitesCount.textContent = data.uniqueSites ? data.uniqueSites.size : '0';
+  // Sites count - handle both Set and Array types
+  let sitesCount = 0;
+  if (data.uniqueSites) {
+    if (data.uniqueSites instanceof Set) {
+      sitesCount = data.uniqueSites.size;
+    } else if (Array.isArray(data.uniqueSites)) {
+      // Remove duplicates if it's an array
+      sitesCount = new Set(data.uniqueSites).size;
+    }
+  }
+  elements.sitesCount.textContent = sitesCount.toString();
   
-  // Topics count
-  elements.topicsCount.textContent = data.topics ? data.topics.size : '0';
+  // Topics count - handle both Set and Array types
+  let topicsCount = 0;
+  if (data.topics) {
+    if (data.topics instanceof Set) {
+      topicsCount = data.topics.size;
+    } else if (Array.isArray(data.topics)) {
+      // Remove duplicates if it's an array
+      topicsCount = new Set(data.topics).size;
+    }
+  }
+  elements.topicsCount.textContent = topicsCount.toString();
 }
 
 // Calculate focus score
@@ -254,9 +272,15 @@ function generateInsights(data) {
     });
   }
   
-  // Site diversity
+  // Site diversity - handle both Set and Array types
   if (data.uniqueSites) {
-    const siteCount = data.uniqueSites.size;
+    let siteCount = 0;
+    if (data.uniqueSites instanceof Set) {
+      siteCount = data.uniqueSites.size;
+    } else if (Array.isArray(data.uniqueSites)) {
+      siteCount = new Set(data.uniqueSites).size;
+    }
+    
     if (siteCount > 30) {
       insights.push({
         type: 'info',
@@ -458,11 +482,6 @@ function setupEventListeners() {
   elements.exportBtn.addEventListener('click', exportData);
   elements.clearBtn.addEventListener('click', clearData);
   
-  // Test knowledge button
-  const testKnowledgeBtn = document.getElementById('testKnowledgeBtn');
-  if (testKnowledgeBtn) {
-    testKnowledgeBtn.addEventListener('click', testKnowledgeExtraction);
-  }
   
   // Knowledge tab events
   if (elements.searchBtn) {
@@ -882,53 +901,6 @@ function setupGraphControls() {
   }
 }
 
-// Test knowledge extraction
-async function testKnowledgeExtraction() {
-  console.log('🧪 Testing knowledge extraction...');
-  
-  try {
-    // Create test data for a sample article
-    const testData = {
-      url: 'https://example.com/test-article',
-      title: 'Understanding Machine Learning Fundamentals',
-      domain: 'example.com',
-      category: 'Learning',
-      duration: 60000, // 60 seconds
-      content: 'This is a test article about machine learning, neural networks, and artificial intelligence. It covers deep learning concepts and practical applications.',
-      headings: ['Introduction to ML', 'Neural Networks', 'Deep Learning', 'Applications'],
-      keywords: 'machine learning, AI, neural networks, deep learning',
-      concepts: ['Machine Learning', 'Neural Networks', 'Deep Learning', 'AI']
-    };
-    
-    // Send test data to service worker
-    const response = await chrome.runtime.sendMessage({
-      action: 'testWebsiteKnowledge',
-      testData: testData
-    });
-    
-    if (response.success) {
-      console.log('✅ Test knowledge extraction successful!');
-      console.log('Created node:', response.node);
-      
-      // Reload knowledge graph to show new data
-      await loadKnowledgeGraph();
-      
-      // Switch to knowledge tab to show results
-      const knowledgeTabBtn = document.querySelector('[data-tab="knowledge"]');
-      if (knowledgeTabBtn) {
-        knowledgeTabBtn.click();
-      }
-      
-      alert('Test knowledge node created successfully! Check the Knowledge Graph tab.');
-    } else {
-      console.error('❌ Test failed:', response.error);
-      alert('Test failed: ' + response.error);
-    }
-  } catch (error) {
-    console.error('❌ Error testing knowledge extraction:', error);
-    alert('Error: ' + error.message);
-  }
-}
 
 // Utility functions
 function formatTime(milliseconds) {

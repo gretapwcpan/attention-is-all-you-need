@@ -48,10 +48,13 @@ export class KnowledgeGraph {
       if (cachedTime && (Date.now() - cachedTime) < this.CACHE_DURATION) {
         console.log(`Skipping duplicate processing for ${normalizedUrl} (processed ${Math.round((Date.now() - cachedTime) / 1000)}s ago)`);
         // Return the existing node if we can find it
-        const existingNode = await this.storage.getNodeByUrl(normalizedUrl, 1); // Check last hour
+        const existingNode = await this.storage.getNodeByUrl(normalizedUrl, 48); // Check last 48 hours for existing node
         if (existingNode) {
+          console.log('Returning existing node for duplicate URL');
           return existingNode;
         }
+        // If no existing node found, still skip processing but log warning
+        console.warn('Duplicate detected but no existing node found, skipping processing');
         return null; // Skip processing
       }
       

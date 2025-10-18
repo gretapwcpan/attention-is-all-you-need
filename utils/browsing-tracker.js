@@ -124,7 +124,7 @@ export class BrowsingTracker {
           }
           
           // Process for knowledge graph
-          console.log('  📊 Calling knowledgeGraph.processPage with:', {
+          console.log('   Calling knowledgeGraph.processPage with:', {
             hasPageData: !!pageData,
             hasSummary: !!summary,
             summaryText: summary?.text?.substring(0, 100) + '...'

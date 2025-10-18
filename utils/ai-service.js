@@ -135,7 +135,9 @@ export class AIService {
       temperature: Math.min(options.temperature || 0.8, this.modelParams?.maxTemperature || 2),
       topK: Math.min(options.topK || 40, this.modelParams?.maxTopK || 128),
       // Add system prompt with language specification to avoid warnings
-      systemPrompt: options.systemPrompt || "You are a helpful assistant. Please respond in English."
+      systemPrompt: options.systemPrompt || "You are a helpful assistant. Please respond in English.",
+      // Add explicit output language to satisfy Chrome AI requirements
+      outputLanguage: 'en'  // English output
     };
 
     // Add initial prompts if provided (for backward compatibility)

@@ -104,7 +104,7 @@ class TodoManager {
         this.updateProgress();
         
         input.value = '';
-        this.showMotivationalMessage('🎯 New mission deployed! Stay focused on your objective.');
+        this.showMotivationalMessage(' New mission deployed! Stay focused on your objective.');
     }
 
     async toggleGoal(goalId) {
