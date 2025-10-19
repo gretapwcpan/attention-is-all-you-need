@@ -7,37 +7,12 @@ let aiService = null;
 
 // Initialize on load
 document.addEventListener('DOMContentLoaded', async () => {
-  initializeMatrixRain();
   await loadTodayData();
   await loadSessions();
   await initializeAI();
   initializeChat();
   setupEventListeners();
 });
-
-// Initialize Matrix rain effect
-function initializeMatrixRain() {
-  const matrixContainer = document.getElementById('matrixRain');
-  const characters = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
-  const columns = 20;
-  
-  for (let i = 0; i < columns; i++) {
-    const column = document.createElement('div');
-    column.className = 'matrix-column';
-    column.style.left = `${(i / columns) * 100}%`;
-    column.style.animationDuration = `${Math.random() * 10 + 10}s`;
-    column.style.animationDelay = `${Math.random() * 5}s`;
-    
-    // Generate random characters for the column
-    let text = '';
-    for (let j = 0; j < 100; j++) {
-      text += characters[Math.floor(Math.random() * characters.length)] + '\n';
-    }
-    column.textContent = text;
-    
-    matrixContainer.appendChild(column);
-  }
-}
 
 // Initialize AI service
 async function initializeAI() {

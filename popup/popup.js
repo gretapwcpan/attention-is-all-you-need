@@ -5,20 +5,34 @@ const elements = {
   // Stats
   totalTimeValue: document.getElementById('totalTimeValue'),
   focusScore: document.getElementById('focusScore'),
+  goalsCompleted: document.getElementById('goalsCompleted'),
   
-  // Character
-  characterSection: document.getElementById('characterSection'),
-  noCharacter: document.getElementById('noCharacter'),
-  characterInfo: document.getElementById('characterInfo'),
-  characterAvatar: document.getElementById('characterAvatar'),
-  characterName: document.getElementById('characterName'),
-  characterType: document.getElementById('characterType'),
-  characterAbility: document.getElementById('characterAbility'),
+  // Companion
+  companionLevel: document.getElementById('companionLevel'),
+  petStage: document.getElementById('petStage'),
+  petSprite: document.getElementById('petSprite'),
+  companionName: document.getElementById('companionName'),
+  petMessage: document.getElementById('petMessage'),
+  
+  // XP System
+  xpValue: document.getElementById('xpValue'),
+  xpBarFill: document.getElementById('xpBarFill'),
+  
+  // Stats bars
+  happinessBar: document.getElementById('happinessBar'),
+  happinessValue: document.getElementById('happinessValue'),
+  energyBar: document.getElementById('energyBar'),
+  energyValue: document.getElementById('energyValue'),
+  knowledgeBar: document.getElementById('knowledgeBar'),
+  knowledgeValue: document.getElementById('knowledgeValue'),
   
   // Buttons
   viewAnalytics: document.getElementById('viewAnalytics'),
   askCoach: document.getElementById('askCoach'),
-  viewTodos: document.getElementById('viewTodos')
+  viewTodos: document.getElementById('viewTodos'),
+  feedBtn: document.getElementById('feedBtn'),
+  statsBtn: document.getElementById('statsBtn'),
+  trainBtn: document.getElementById('trainBtn')
 };
 
 // State
@@ -36,6 +50,7 @@ let todayData = {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  console.log('🚀 FocusFlow initializing...');
   await loadCurrentSession();
   await loadTodayData();
   await loadCharacter();
@@ -70,34 +85,65 @@ async function addFocusPoints(amount) {
 }
 
 function updateXPDisplay() {
-  const xpValue = document.getElementById('xpValue');
-  if (xpValue) {
-    xpValue.textContent = userXP;
+  if (elements.xpValue) {
+    elements.xpValue.textContent = userXP;
   }
   
   // Calculate level and progress
   const level = Math.floor(userXP / 10) + 1;
-  const xpInCurrentLevel = userXP % 10;
-  const xpForNextLevel = 10;
-  const progressPercent = (xpInCurrentLevel / xpForNextLevel) * 100;
   
-  // Update level display
-  const xpLevel = document.getElementById('xpLevel');
-  if (xpLevel) {
-    xpLevel.textContent = `LEVEL ${level}`;
+  // Update companion level display
+  if (elements.companionLevel) {
+    elements.companionLevel.textContent = `Level ${level}`;
   }
   
-  // Update progress bar
-  const xpBarFill = document.getElementById('xpBarFill');
-  if (xpBarFill) {
-    xpBarFill.style.width = `${progressPercent}%`;
+  // Calculate progress to next evolution
+  let progressPercent = 0;
+  let nextEvolution = '';
+  let xpNeeded = 0;
+  
+  if (userXP < 5) {
+    progressPercent = (userXP / 5) * 100;
+    nextEvolution = 'BABY';
+    xpNeeded = 5 - userXP;
+  } else if (userXP < 20) {
+    progressPercent = ((userXP - 5) / 15) * 100;
+    nextEvolution = 'TEEN';
+    xpNeeded = 20 - userXP;
+  } else if (userXP < 50) {
+    progressPercent = ((userXP - 20) / 30) * 100;
+    nextEvolution = 'ADULT';
+    xpNeeded = 50 - userXP;
+  } else {
+    progressPercent = 100;
+    nextEvolution = 'MASTER';
+    xpNeeded = 0;
   }
   
-  // Update next level text
-  const xpNext = document.getElementById('xpNext');
-  if (xpNext) {
-    const xpNeeded = xpForNextLevel - xpInCurrentLevel;
-    xpNext.textContent = `${xpNeeded} points to level ${level + 1}`;
+  // Update XP progress bar
+  if (elements.xpBarFill) {
+    elements.xpBarFill.style.width = `${progressPercent}%`;
+  }
+  
+  // Update evolution dots
+  const dots = document.querySelectorAll('.xp-dots .dot');
+  const filledDots = Math.floor((progressPercent / 100) * dots.length);
+  dots.forEach((dot, index) => {
+    if (index < filledDots) {
+      dot.classList.add('filled');
+    } else {
+      dot.classList.remove('filled');
+    }
+  });
+  
+  // Update next evolution display
+  const evolutionName = document.querySelector('.evolution-name');
+  const evolutionRequirement = document.querySelector('.evolution-requirement');
+  if (evolutionName) {
+    evolutionName.textContent = nextEvolution;
+  }
+  if (evolutionRequirement) {
+    evolutionRequirement.textContent = xpNeeded > 0 ? `${xpNeeded} XP` : 'MAX';
   }
 }
 
@@ -121,11 +167,14 @@ async function initTamagotchi() {
     const data = await chrome.storage.local.get(['tamagotchiPet', 'userXP']);
     if (data.tamagotchiPet) {
       tamagotchiPet = data.tamagotchiPet;
+      // Migrate old 'foundation' stage to 'egg' if needed
+      if (tamagotchiPet.stage === 'foundation') {
+        tamagotchiPet.stage = 'egg';
+      }
     } else {
       // Create new companion
       tamagotchiPet = {
-        name: 'Focus Companion',
-        stage: 'foundation',
+        stage: 'egg',
         born: Date.now(),
         stats: {
           progress: 50,
@@ -141,14 +190,19 @@ async function initTamagotchi() {
       await chrome.storage.local.set({ tamagotchiPet });
     }
     
-    // Check XP-based evolution immediately
+    // Check XP-based evolution immediately - force update
     const currentXP = data.userXP || 0;
+    userXP = currentXP; // Ensure userXP is set
     checkXPBasedEvolution(currentXP);
     
     updatePetDisplay();
     
-    // Update pet stats periodically
-    setInterval(updatePetStats, 60000); // Every minute
+    // Update pet stats periodically (prevent multiple intervals)
+    if (!window.petStatsTimer) {
+      window.petStatsTimer = setInterval(() => {
+        requestAnimationFrame(updatePetStats);
+      }, 60000); // Every minute
+    }
     
     // Listen for mission completions
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -158,33 +212,48 @@ async function initTamagotchi() {
     });
     
     // Also listen for storage changes to detect XP updates
+    // TEMPORARILY DISABLED TO TEST IF THIS CAUSES UI SHAKING
+    /*
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === 'local' && changes.userXP) {
         const newXP = changes.userXP.newValue || 0;
         checkXPBasedEvolution(newXP);
       }
     });
+    */
     
   } catch (error) {
     console.error('Error initializing Tamagotchi:', error);
   }
 }
 
+// Track previous display state to prevent unnecessary innerHTML updates
+let previousPetImagePath = null;
+let previousPetMood = null;
+
 function updatePetDisplay() {
   if (!tamagotchiPet) return;
-  
+
   // Use SVG images for pet stages
-  const petSprite = document.getElementById('petSprite');
-  if (petSprite) {
-    // Map foundation stage to egg image
-    const imageStage = tamagotchiPet.stage === 'foundation' ? 'egg' : tamagotchiPet.stage;
+  if (elements.petSprite) {
+    // Ensure proper stage mapping
+    let imageStage = tamagotchiPet.stage;
+    if (imageStage === 'foundation') {
+      imageStage = 'egg'; // Map foundation to egg for backwards compatibility
+    }
     const imagePath = `image/${imageStage}.svg`;
-    petSprite.innerHTML = `<img src="${imagePath}" alt="${tamagotchiPet.stage}" class="pet-image ${tamagotchiPet.mood}">`;
+    const currentMood = tamagotchiPet.mood;
+
+    // Only update innerHTML if image or mood actually changed
+    if (imagePath !== previousPetImagePath || currentMood !== previousPetMood) {
+      elements.petSprite.innerHTML = `<img src="${imagePath}" alt="${tamagotchiPet.stage}" class="companion-image ${currentMood}">`;
+      previousPetImagePath = imagePath;
+      previousPetMood = currentMood;
+    }
   }
   
   // Update mastery stage
-  const petStage = document.getElementById('petStage');
-  if (petStage) {
+  if (elements.petStage) {
     const stageNames = {
       'foundation': 'FOUNDATION',
       'egg': 'FOUNDATION',
@@ -192,35 +261,93 @@ function updatePetDisplay() {
       'teen': 'INTERMEDIATE',
       'adult': 'MASTER'
     };
-    petStage.textContent = `[${stageNames[tamagotchiPet.stage] || tamagotchiPet.stage.toUpperCase()}]`;
+    // Force re-check XP evolution if stage seems wrong
+    if (userXP >= 20 && (tamagotchiPet.stage === 'egg' || tamagotchiPet.stage === 'foundation' || tamagotchiPet.stage === 'baby')) {
+      checkXPBasedEvolution(userXP);
+    }
+    elements.petStage.textContent = `[${stageNames[tamagotchiPet.stage] || tamagotchiPet.stage.toUpperCase()}]`;
+  }
+  
+  // Update companion name
+  if (elements.companionName) {
+    elements.companionName.textContent = tamagotchiPet.name || 'Focus Buddy';
   }
   
   // Update pet message
-  const petMessage = document.getElementById('petMessage');
-  if (petMessage) {
-    petMessage.textContent = getPetMessage();
+  if (elements.petMessage) {
+    elements.petMessage.textContent = getPetMessage();
   }
   
-  // Update stats bars
-  updateStatBar('happiness', tamagotchiPet.stats.progress || tamagotchiPet.stats.happiness);
-  updateStatBar('energy', tamagotchiPet.stats.energy);
-  updateStatBar('knowledge', tamagotchiPet.stats.knowledge);
+  // Add click interaction to mascot (only once)
+  if (elements.petSprite && !elements.petSprite.hasAttribute('data-click-handler')) {
+    elements.petSprite.setAttribute('data-click-handler', 'true');
+    elements.petSprite.style.cursor = 'pointer';
+    
+    elements.petSprite.addEventListener('click', () => {
+      // Trigger celebration animation
+      elements.petSprite.classList.add('celebrating');
+      
+      // Change mood temporarily
+      const previousMood = tamagotchiPet.mood;
+      tamagotchiPet.mood = 'excited';
+      
+      // Update message
+      const excitedMessages = [
+        'Yay! Thanks for the attention!',
+        'Woohoo! Let\'s stay focused!',
+        'That tickles! Ready to work!',
+        'Hi there! Let\'s achieve greatness!',
+        'Feeling energized! Let\'s go!'
+      ];
+      elements.petMessage.textContent = excitedMessages[Math.floor(Math.random() * excitedMessages.length)];
+      
+      // Small stat boost
+      tamagotchiPet.stats.energy = Math.min(100, tamagotchiPet.stats.energy + 5);
+      updateStatBar('energy', tamagotchiPet.stats.energy);
+      
+      // Remove celebration after animation
+      setTimeout(() => {
+        elements.petSprite.classList.remove('celebrating');
+        tamagotchiPet.mood = previousMood;
+        elements.petMessage.textContent = getPetMessage();
+      }, 1200);
+    });
+  }
+  
+  // Update stats bars with proper percentages
+  const progressValue = tamagotchiPet.stats.progress || tamagotchiPet.stats.happiness || 50;
+  const energyValue = tamagotchiPet.stats.energy || 50;
+  const knowledgeValue = tamagotchiPet.stats.knowledge || 0;
+  
+  updateStatBar('happiness', progressValue);
+  updateStatBar('energy', energyValue);
+  updateStatBar('knowledge', knowledgeValue);
 }
+
+// Cache for stat bar values to prevent unnecessary updates
+const statBarCache = {};
 
 function updateStatBar(stat, value) {
   const bar = document.getElementById(`${stat}Bar`);
   const valueEl = document.getElementById(`${stat}Value`);
   
+  // Only update if value actually changed
+  const roundedValue = Math.round(value);
+  if (statBarCache[stat] === roundedValue) {
+    return; // Skip update if value hasn't changed
+  }
+  statBarCache[stat] = roundedValue;
+  
   if (bar) {
-    bar.style.width = `${value}%`;
+    bar.style.width = `${roundedValue}%`;
   }
   if (valueEl) {
-    valueEl.textContent = value;
+    valueEl.textContent = `${roundedValue}%`;
   }
 }
 
 function getPetMessage() {
-  if ((tamagotchiPet.stage === 'foundation' || tamagotchiPet.stage === 'egg') && tamagotchiPet.goalsCompleted === 0) {
+  if ((tamagotchiPet.stage === 'foundation' || tamagotchiPet.stage === 'egg') && userXP < 5) {
     return 'Complete your first goal to begin your journey!';
   }
   
@@ -281,11 +408,10 @@ async function onMissionComplete() {
   // which is triggered by storage changes when XP is updated
   
   // Add celebration animation
-  const petAnimation = document.getElementById('petAnimation');
-  if (petAnimation) {
-    petAnimation.classList.add('celebrating');
+  if (elements.petSprite) {
+    elements.petSprite.classList.add('celebrating');
     setTimeout(() => {
-      petAnimation.classList.remove('celebrating');
+      elements.petSprite.classList.remove('celebrating');
     }, 1000);
   }
   
@@ -316,7 +442,7 @@ function checkXPBasedEvolution(xp) {
   } else if (xp >= 5) {
     newStage = 'baby'; // Beginner stage at 5 XP
   } else {
-    newStage = 'foundation'; // Foundation/egg stage below 5 XP
+    newStage = 'egg'; // Egg stage below 5 XP (changed from 'foundation')
   }
   
   // If stage changed, update and save
@@ -325,7 +451,7 @@ function checkXPBasedEvolution(xp) {
     tamagotchiPet.stage = newStage;
     
     // Boost stats on evolution
-    if (newStage !== 'foundation') {
+    if (newStage !== 'egg' && newStage !== 'foundation') {
       tamagotchiPet.stats.progress = Math.min(100, tamagotchiPet.stats.progress + 30);
       tamagotchiPet.stats.happiness = tamagotchiPet.stats.progress;
       tamagotchiPet.stats.energy = Math.min(100, tamagotchiPet.stats.energy + 20);
@@ -708,6 +834,12 @@ function updateUI() {
     elements.focusScore.textContent = calculateFocusScore();
   }
   
+  // Update goals completed count
+  if (elements.goalsCompleted && tamagotchiPet) {
+    const goalsCount = tamagotchiPet.goalsCompleted || 0;
+    elements.goalsCompleted.textContent = goalsCount;
+  }
+  
   // Update focus state display
   updateFocusDisplay();
 }
@@ -790,35 +922,55 @@ function calculateFocusScore() {
   return score;
 }
 
+// Track previous states to prevent unnecessary updates
+let previousFocusState = null;
+let previousFocusClass = null;
+
 // Update focus state display
 function updateFocusDisplay() {
   // Calculate percentages for mini bars
   const totalFocusTime = todayData.deepFocusTime + todayData.activeReadingTime + todayData.scanningTime;
-  
+
   if (totalFocusTime > 0) {
     const deepPercent = (todayData.deepFocusTime / totalFocusTime) * 100;
     const activePercent = (todayData.activeReadingTime / totalFocusTime) * 100;
     const scanPercent = (todayData.scanningTime / totalFocusTime) * 100;
-    
-    // Update mini bars
+
+    // Update mini bars only if they exist and values changed
     const deepMini = document.getElementById('deepMini');
     const activeMini = document.getElementById('activeMini');
     const scanMini = document.getElementById('scanMini');
-    
-    if (deepMini) deepMini.style.width = `${deepPercent}%`;
-    if (activeMini) activeMini.style.width = `${activePercent}%`;
-    if (scanMini) scanMini.style.width = `${scanPercent}%`;
+
+    // BATCH ALL READS FIRST to avoid layout thrashing
+    const currentDeepWidth = deepMini ? deepMini.style.width : '';
+    const currentActiveWidth = activeMini ? activeMini.style.width : '';
+    const currentScanWidth = scanMini ? scanMini.style.width : '';
+
+    // THEN BATCH ALL WRITES with rounded values to prevent floating point jitter
+    const newDeepWidth = `${Math.round(deepPercent * 10) / 10}%`;
+    const newActiveWidth = `${Math.round(activePercent * 10) / 10}%`;
+    const newScanWidth = `${Math.round(scanPercent * 10) / 10}%`;
+
+    if (deepMini && currentDeepWidth !== newDeepWidth) {
+      deepMini.style.width = newDeepWidth;
+    }
+    if (activeMini && currentActiveWidth !== newActiveWidth) {
+      activeMini.style.width = newActiveWidth;
+    }
+    if (scanMini && currentScanWidth !== newScanWidth) {
+      scanMini.style.width = newScanWidth;
+    }
   }
-  
+
   // Update current focus badge based on current session
   const focusBadge = document.getElementById('focusBadge');
   if (focusBadge && currentSession) {
     const elapsed = Date.now() - currentSession.startTime;
     const minutes = elapsed / 60000;
-    
+
     let focusState = '[SCAN]';
     let badgeClass = 'focus-badge-large scan-state';
-    
+
     if (minutes >= 10) {
       focusState = '[DEEP]';
       badgeClass = 'focus-badge-large deep-state';
@@ -826,12 +978,28 @@ function updateFocusDisplay() {
       focusState = '[ACTIVE]';
       badgeClass = 'focus-badge-large active-state';
     }
-    
-    focusBadge.textContent = focusState;
-    focusBadge.className = badgeClass;
+
+    // Only update if the state actually changed
+    if (focusState !== previousFocusState) {
+      focusBadge.textContent = focusState;
+      previousFocusState = focusState;
+    }
+    if (badgeClass !== previousFocusClass) {
+      focusBadge.className = badgeClass;
+      previousFocusClass = badgeClass;
+    }
   } else if (focusBadge) {
-    focusBadge.textContent = '[IDLE]';
-    focusBadge.className = 'focus-badge-large idle-state';
+    const idleState = '[IDLE]';
+    const idleClass = 'focus-badge-large idle-state';
+
+    if (idleState !== previousFocusState) {
+      focusBadge.textContent = idleState;
+      previousFocusState = idleState;
+    }
+    if (idleClass !== previousFocusClass) {
+      focusBadge.className = idleClass;
+      previousFocusClass = idleClass;
+    }
   }
 }
 
@@ -869,23 +1037,50 @@ function generateInsights() {
   return insights.length > 0 ? insights : ['Keep browsing to generate insights'];
 }
 
-// Start timer for current session
+// Timer management
+let mainTimer = null;
+let lastUpdateTime = 0;
+let lastTotalMinutes = -1;
+
+// Start timer for current session - optimized to reduce layout thrashing
 function startTimer() {
-  setInterval(() => {
+  // Prevent multiple timers
+  if (mainTimer) {
+    clearInterval(mainTimer);
+  }
+
+  // Use requestAnimationFrame for smooth updates
+  function updateTimer() {
     if (currentSession) {
-      const elapsed = Date.now() - currentSession.startTime;
+      const now = Date.now();
+      const elapsed = now - currentSession.startTime;
       const minutes = Math.floor(elapsed / 60000);
-      
-      // Update total time display
-      if (elements.totalTimeValue) {
-        const totalMinutes = Math.floor((todayData.totalTime + elapsed) / 60000);
-        elements.totalTimeValue.textContent = totalMinutes;
-      }
-      
-      // Update focus state display
-      updateFocusDisplay();
+
+      // Batch DOM updates using requestAnimationFrame
+      requestAnimationFrame(() => {
+        // Only update total time display if it actually changed
+        if (elements.totalTimeValue) {
+          const totalMinutes = Math.floor((todayData.totalTime + elapsed) / 60000);
+          if (totalMinutes !== lastTotalMinutes) {
+            elements.totalTimeValue.textContent = totalMinutes;
+            lastTotalMinutes = totalMinutes;
+          }
+        }
+
+        // Only update focus display every 10 seconds to reduce reflows
+        if (now - lastUpdateTime >= 10000) {
+          updateFocusDisplay();
+          lastUpdateTime = now;
+        }
+      });
     }
-  }, 1000);
+  }
+
+  // Run updates every 5 seconds instead of every second
+  mainTimer = setInterval(updateTimer, 5000);
+  
+  // Run once immediately
+  updateTimer();
 }
 
 // Setup event listeners
@@ -918,9 +1113,38 @@ function setupEventListeners() {
     });
   }
   
-  // Focus River button removed - feature deprecated
+  // Companion action buttons (renamed from feedBtn, statsBtn, trainBtn)
+  const goalsBtn = document.getElementById('feedBtn');
+  const statsBtn = document.getElementById('statsBtn');
+  const trainBtn = document.getElementById('trainBtn');
   
-  // Removed test evolution button and intention display click handler
+  if (goalsBtn) {
+    goalsBtn.addEventListener('click', () => {
+      // Open Daily Goals to complete a goal
+      chrome.tabs.create({ url: chrome.runtime.getURL('popup/todo-manager.html') });
+    });
+  }
+  
+  if (statsBtn) {
+    statsBtn.addEventListener('click', () => {
+      // Show detailed stats - open analytics
+      chrome.tabs.create({ url: chrome.runtime.getURL('analytics/analytics.html') });
+    });
+  }
+  
+  if (trainBtn) {
+    trainBtn.addEventListener('click', () => {
+      // Open AI Coach for training
+      chrome.windows.create({
+        url: chrome.runtime.getURL('popup/coach-dialog.html'),
+        type: 'popup',
+        width: 500,
+        height: 600,
+        left: Math.round((screen.width - 500) / 2),
+        top: Math.round((screen.height - 600) / 2)
+      });
+    });
+  }
 }
 
 // Utility functions

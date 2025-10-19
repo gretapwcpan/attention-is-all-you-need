@@ -112,10 +112,9 @@ class TodoManager {
         goal.completed = !goal.completed;
         if (goal.completed) {
             goal.completedAt = new Date().toISOString();
-            this.showMotivationalMessage(this.getCompletionMessage(goal));
             
-            // Award 5 XP for completing a mission (to match popup.js)
-            await this.awardXP(5);
+            // Award 1 XP for completing a mission (to match popup.js)
+            await this.awardXP(1);
             
             // Notify Tamagotchi pet about mission completion
             if (chrome.runtime && chrome.runtime.sendMessage) {
@@ -238,7 +237,6 @@ class TodoManager {
     clearCompleted() {
         const completedCount = this.goals.filter(g => g.completed).length;
         if (completedCount === 0) {
-            this.showMotivationalMessage('No completed missions to clear.');
             return;
         }
         
@@ -247,7 +245,6 @@ class TodoManager {
             this.saveData();
             this.render();
             this.updateProgress();
-            this.showMotivationalMessage('🧹 Completed missions cleared! Ready for new objectives.');
         }
     }
 
@@ -400,7 +397,6 @@ class TodoManager {
             }
         }
         
-        this.showMotivationalMessage('📝 Editing mission... Press Enter to save, Escape to cancel.');
     }
     
     saveGoalEdit(goalId) {
@@ -428,7 +424,6 @@ class TodoManager {
             // Save and re-render
             this.saveData();
             this.render();
-            this.showMotivationalMessage('✅ Mission updated successfully!');
         }
     }
     
@@ -447,7 +442,6 @@ class TodoManager {
             }
         }
         
-        this.showMotivationalMessage('❌ Edit cancelled. Mission unchanged.');
     }
     
     triggerCoinCelebration() {

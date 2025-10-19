@@ -1,5 +1,5 @@
 // FocusFlow - Background Service Worker
-// Roam Less. Gather More.
+// Roam Less. Discover More.
 
 // Import AI and character modules
 import { getAIService } from '../utils/ai-service.js';

@@ -1,4 +1,4 @@
-# FocusFlow - Roam Less. Gather More.
+# FocusFlow - Roam Less. Discover More.
 
 Transform your browsing into a productive journey with FocusFlow - your digital companion that helps you browse with purpose.
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FocusFlow - Your Productivity Companion</title>
+    <title>FocusFlow - Roam Less, Discover More</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,122 +11,141 @@
         <!-- Header -->
         <header class="header">
             <h1>FocusFlow</h1>
-            <p class="tagline">Roam Less. Gather More.</p>
+            <p class="tagline">Roam Less, Discover More</p>
         </header>
 
-        <!-- XP Display Section -->
-        <section class="xp-section">
-            <div class="xp-container">
-                <svg class="coin-icon-large" width="48" height="48" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>
-                    <circle cx="12" cy="12" r="8" fill="none" stroke="#FFA500" stroke-width="0.5"/>
-                    <text x="12" y="16" text-anchor="middle" fill="#FFA500" font-size="12" font-weight="bold">★</text>
-                </svg>
-                <div class="xp-info">
-                    <div class="xp-value-large" id="xpValue">0</div>
-                    <div class="xp-label-large">Focus Points</div>
+        <!-- Companion Card Section -->
+        <section class="companion-card">
+            <div class="card-header">
+                <span class="card-title">Focus Companion</span>
+                <span class="card-level" id="companionLevel">Level 4</span>
+            </div>
+            
+            <div class="companion-display">
+                <div class="companion-stage" id="petStage">[INTERMEDIATE]</div>
+                <div class="companion-sprite" id="petSprite">
+                    <img src="image/egg.svg" alt="Companion" class="companion-image">
+                </div>
+                <div class="companion-name" id="companionName">Buddy</div>
+                <div class="companion-message" id="petMessage">Ready to grow together!</div>
+            </div>
+
+            <div class="progress-section">
+                <div class="xp-display">
+                    <div class="xp-row">
+                        <span class="xp-label">XP Progress</span>
+                        <span class="xp-value" id="xpValue">30</span>
+                        <span class="xp-total">/50</span>
+                    </div>
+                    <div class="xp-bar-container">
+                        <div class="xp-bar">
+                            <div class="xp-bar-fill" id="xpBarFill"></div>
+                        </div>
+                        <div class="xp-dots">
+                            <span class="dot filled"></span>
+                            <span class="dot filled"></span>
+                            <span class="dot filled"></span>
+                            <span class="dot"></span>
+                            <span class="dot"></span>
+                        </div>
+                    </div>
+                    <div class="next-evolution">
+                        <span class="evolution-label">Next Evolution:</span>
+                        <span class="evolution-name">ADULT</span>
+                        <span class="evolution-requirement">20 XP</span>
+                    </div>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-name">Progress</span>
+                        <div class="stat-mini-bar">
+                            <div class="stat-mini-fill" id="happinessBar"></div>
+                        </div>
+                        <span class="stat-percent" id="happinessValue">85%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">Energy</span>
+                        <div class="stat-mini-bar">
+                            <div class="stat-mini-fill" id="energyBar"></div>
+                        </div>
+                        <span class="stat-percent" id="energyValue">90%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">Knowledge</span>
+                        <div class="stat-mini-bar">
+                            <div class="stat-mini-fill" id="knowledgeBar"></div>
+                        </div>
+                        <span class="stat-percent" id="knowledgeValue">75%</span>
+                    </div>
                 </div>
             </div>
-            <div class="xp-progress">
-                <div class="xp-level" id="xpLevel">LEVEL 1</div>
-                <div class="xp-bar">
-                    <div class="xp-bar-fill" id="xpBarFill"></div>
-                </div>
-                <div class="xp-next" id="xpNext">10 points to next level</div>
-            </div>
+
         </section>
 
-        <!-- Progress Tracker Display -->
-        <section class="tamagotchi-section" id="tamagotchiSection">
-            <div class="pet-container">
-                <div class="pet-display" id="petDisplay">
-                    <div class="pet-sprite" id="petSprite">🥚</div>
-                    <div class="pet-animation" id="petAnimation"></div>
-                </div>
-            </div>
+        <!-- Inviting Action Buttons - Moved below companion -->
+        <section class="action-buttons-section">
+            <button class="action-btn-breathing" id="feedBtn" title="Set and track your daily goals">
+                <span class="action-text">SET GOALS</span>
+                <span class="action-subtitle">Track your progress</span>
+            </button>
+            <button class="action-btn-breathing" id="statsBtn" title="View your detailed analytics">
+                <span class="action-text">CHECK STATS</span>
+                <span class="action-subtitle">See your insights</span>
+            </button>
+            <button class="action-btn-breathing" id="trainBtn" title="Get AI-powered insights">
+                <span class="action-text">AI MIND READER</span>
+                <span class="action-subtitle">Smart suggestions</span>
+            </button>
         </section>
 
-        <!-- Stats Grid -->
-        <section class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Today's Focus</div>
-                <div class="stat-value">
+        <!-- Metrics Section -->
+        <section class="metrics-section">
+            <div class="metric-card">
+                <div class="metric-label">Today's Focus</div>
+                <div class="metric-value">
                     <span id="totalTimeValue">0</span>
-                    <span class="stat-unit">min</span>
+                    <span class="metric-unit">min</span>
                 </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Focus Score</div>
-                <div class="stat-value">
+            <div class="metric-card">
+                <div class="metric-label">Focus Score</div>
+                <div class="metric-value">
                     <span id="focusScore">--</span>
-                    <span class="stat-unit">%</span>
+                    <span class="metric-unit">%</span>
                 </div>
             </div>
-        </section>
-
-        <!-- Action Buttons -->
-        <section class="actions">
-            <button class="btn btn-tertiary" id="viewAnalytics">
-                 Browsing Analytics
-            </button>
-            <button class="btn btn-tertiary" id="askCoach">
-                 AI Mind Reader
-            </button>
-            <button class="btn btn-tertiary" id="viewTodos">
-                 Daily Goals
-            </button>
+            <div class="metric-card">
+                <div class="metric-label">Daily Goals</div>
+                <div class="metric-value">
+                    <span id="goalsCompleted">0</span>
+                    <span class="metric-unit">/5</span>
+                </div>
+            </div>
         </section>
 
         <!-- Focus State Display -->
-        <section class="focus-state-section">
-            <div class="focus-state-label">Current State</div>
-            <div class="focus-state-display">
-                <div class="focus-indicator" id="currentFocus">
-                    <span class="focus-badge-large" id="focusBadge">[IDLE]</span>
+        <section class="focus-state-minimal">
+            <div class="focus-current">
+                <span class="focus-label">Current State:</span>
+                <span class="focus-badge" id="focusBadge">IDLE</span>
+            </div>
+            <div class="focus-bars">
+                <div class="focus-bar-item">
+                    <span class="bar-label">Deep</span>
+                    <div class="bar-fill deep-fill" id="deepMini"></div>
                 </div>
-                <div class="focus-mini-bars">
-                    <div class="mini-bar">
-                        <span class="mini-label">Deep</span>
-                        <div class="mini-bar-fill deep-fill" id="deepMini"></div>
-                    </div>
-                    <div class="mini-bar">
-                        <span class="mini-label">Active</span>
-                        <div class="mini-bar-fill active-fill" id="activeMini"></div>
-                    </div>
-                    <div class="mini-bar">
-                        <span class="mini-label">Light</span>
-                        <div class="mini-bar-fill scan-fill" id="scanMini"></div>
-                    </div>
+                <div class="focus-bar-item">
+                    <span class="bar-label">Active</span>
+                    <div class="bar-fill active-fill" id="activeMini"></div>
+                </div>
+                <div class="focus-bar-item">
+                    <span class="bar-label">Light</span>
+                    <div class="bar-fill scan-fill" id="scanMini"></div>
                 </div>
             </div>
         </section>
 
-        <!-- Pet Stats Section (moved to bottom) -->
-        <section class="pet-stats-section">
-            <div class="pet-stats">
-                <div class="stat-bar">
-                    <span class="stat-label"> Progress</span>
-                    <div class="stat-bar-fill happiness-bar">
-                        <div class="stat-bar-inner" id="happinessBar"></div>
-                    </div>
-                    <span class="stat-value" id="happinessValue">50</span>
-                </div>
-                <div class="stat-bar">
-                    <span class="stat-label">Energy</span>
-                    <div class="stat-bar-fill energy-bar">
-                        <div class="stat-bar-inner" id="energyBar"></div>
-                    </div>
-                    <span class="stat-value" id="energyValue">50</span>
-                </div>
-                <div class="stat-bar">
-                    <span class="stat-label"> Knowledge</span>
-                    <div class="stat-bar-fill knowledge-bar">
-                        <div class="stat-bar-inner" id="knowledgeBar"></div>
-                    </div>
-                    <span class="stat-value" id="knowledgeValue">0</span>
-                </div>
-            </div>
-        </section>
     </div>
 
     <script src="popup.js"></script>

@@ -51,15 +51,25 @@ async function initializeKnowledgeModules() {
     console.log('Initializing knowledge modules...');
     
     // Initialize storage first
-    await knowledgeStorage.initialize();
+    const storageInitialized = await knowledgeStorage.initialize();
+    if (!storageInitialized) {
+      console.error('Failed to initialize knowledge storage');
+      return false;
+    }
     console.log('Knowledge storage initialized');
     
     // Initialize knowledge graph
-    await knowledgeGraph.initialize();
+    const graphInitialized = await knowledgeGraph.initialize();
+    if (!graphInitialized) {
+      console.error('Failed to initialize knowledge graph');
+      return false;
+    }
     console.log('Knowledge graph initialized');
     
+    return true;
   } catch (error) {
     console.error('Error initializing knowledge modules:', error);
+    return false;
   }
 }
 
@@ -574,16 +584,30 @@ async function loadKnowledgeGraph() {
   try {
     // Ensure knowledge storage is initialized
     if (!knowledgeStorage.initialized) {
-      await knowledgeStorage.initialize();
+      const initialized = await knowledgeStorage.initialize();
+      if (!initialized) {
+        console.error('Failed to initialize knowledge storage in loadKnowledgeGraph');
+        showKnowledgeEmptyState();
+        return;
+      }
     }
     
     // Initialize network visualizer if not already done
     if (!networkVisualizer) {
-      networkVisualizer = new NetworkVisualizer('knowledgeNetwork');
-      await networkVisualizer.initialize();
+      try {
+        networkVisualizer = new NetworkVisualizer('knowledgeNetwork');
+        await networkVisualizer.initialize();
+      } catch (vizError) {
+        console.error('Error initializing network visualizer:', vizError);
+        // Continue without visualizer - other features should still work
+      }
     } else {
       // Refresh the graph
-      await networkVisualizer.refresh();
+      try {
+        await networkVisualizer.refresh();
+      } catch (refreshError) {
+        console.error('Error refreshing network visualizer:', refreshError);
+      }
     }
     
     // Get storage stats
@@ -619,6 +643,24 @@ async function loadKnowledgeGraph() {
     
   } catch (error) {
     console.error('Error loading knowledge graph:', error);
+    showKnowledgeEmptyState();
+  }
+}
+
+// Show knowledge empty state
+function showKnowledgeEmptyState() {
+  if (elements.nodeCount) elements.nodeCount.textContent = '0';
+  if (elements.conceptCount) elements.conceptCount.textContent = '0';
+  if (elements.connectionCount) elements.connectionCount.textContent = '0';
+  if (elements.learningStreak) elements.learningStreak.textContent = '0 days';
+  if (elements.topConcepts) {
+    elements.topConcepts.innerHTML = '<div class="empty-state">Topics will appear as you read and learn.</div>';
+  }
+  if (elements.recentNodes) {
+    elements.recentNodes.innerHTML = '<div class="empty-state">Your recent articles and summaries will appear here.</div>';
+  }
+  if (elements.learningInsights) {
+    elements.learningInsights.innerHTML = '<div class="empty-state">Insights about your learning journey will appear here.</div>';
   }
 }
 
@@ -651,31 +693,56 @@ function calculateLearningStreak(timeline) {
   return streak;
 }
 
-// Load top concepts
+// Load top concepts with improved validation
 async function loadTopConcepts() {
   if (!elements.topConcepts) return;
   
   try {
     // Ensure storage is initialized
     if (!knowledgeStorage.initialized) {
-      await knowledgeStorage.initialize();
+      const initialized = await knowledgeStorage.initialize();
+      if (!initialized) {
+        console.error('Failed to initialize storage in loadTopConcepts');
+        elements.topConcepts.innerHTML = '<div class="empty-state">Unable to load topics data.</div>';
+        return;
+      }
     }
     
     const conceptIndex = await knowledgeStorage.getConceptIndex();
-    console.log('Concept index loaded:', Object.keys(conceptIndex).length, 'concepts');
     
-    if (Object.keys(conceptIndex).length === 0) {
-      elements.topConcepts.innerHTML = '<div class="empty-state">Concepts will appear as you read articles.</div>';
+    // Validate conceptIndex
+    if (!conceptIndex || typeof conceptIndex !== 'object') {
+      console.error('Invalid concept index received:', conceptIndex);
+      elements.topConcepts.innerHTML = '<div class="empty-state">Topics will appear as you read and learn.</div>';
       return;
     }
     
-    // Sort concepts by frequency
+    console.log('Concept index loaded:', Object.keys(conceptIndex).length, 'concepts');
+    
+    if (Object.keys(conceptIndex).length === 0) {
+      elements.topConcepts.innerHTML = '<div class="empty-state">Topics will appear as you read and learn.</div>';
+      return;
+    }
+    
+    // Sort concepts by frequency with validation
     const conceptCounts = Object.entries(conceptIndex)
-      .map(([concept, nodeIds]) => ({ concept, count: nodeIds.length }))
+      .filter(([concept, nodeIds]) => {
+        // Validate each entry
+        return concept && Array.isArray(nodeIds) && nodeIds.length > 0;
+      })
+      .map(([concept, nodeIds]) => ({ 
+        concept: concept.trim(), 
+        count: nodeIds.length 
+      }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 20); // Top 20 concepts
     
-    const maxCount = conceptCounts[0]?.count || 1;
+    if (conceptCounts.length === 0) {
+      elements.topConcepts.innerHTML = '<div class="empty-state">Topics will appear as you read and learn.</div>';
+      return;
+    }
+    
+    const maxCount = conceptCounts[0].count;
     
     // Render concept cloud
     const conceptsHTML = conceptCounts.map(({ concept, count }) => {
@@ -694,84 +761,130 @@ async function loadTopConcepts() {
     elements.topConcepts.querySelectorAll('.concept-tag').forEach(tag => {
       tag.addEventListener('click', () => {
         const concept = tag.dataset.concept;
-        elements.knowledgeSearch.value = concept;
-        searchKnowledge();
+        if (elements.knowledgeSearch) {
+          elements.knowledgeSearch.value = concept;
+          searchKnowledge();
+        }
       });
     });
     
   } catch (error) {
     console.error('Error loading concepts:', error);
+    elements.topConcepts.innerHTML = '<div class="empty-state">Error loading topics data.</div>';
   }
 }
 
-// Load recent nodes with deduplication
+// Load recent nodes with improved deduplication
 async function loadRecentNodes() {
   if (!elements.recentNodes) return;
   
   try {
     // Ensure storage is initialized
     if (!knowledgeStorage.initialized) {
-      await knowledgeStorage.initialize();
+      const initialized = await knowledgeStorage.initialize();
+      if (!initialized) {
+        console.error('Failed to initialize storage in loadRecentNodes');
+        elements.recentNodes.innerHTML = '<div class="empty-state">Unable to load recent learning data.</div>';
+        return;
+      }
     }
     
     const nodes = await knowledgeStorage.getAllNodes();
-    console.log('All nodes loaded:', nodes.length, 'total nodes');
     
-    let recentNodes = nodes.slice(-20).reverse(); // Get last 20 nodes for deduplication
-    
-    if (recentNodes.length === 0) {
+    // Validate nodes data
+    if (!nodes || !Array.isArray(nodes)) {
+      console.error('Invalid nodes data received:', nodes);
       elements.recentNodes.innerHTML = '<div class="empty-state">Your recent learning will appear here.</div>';
       return;
     }
     
-    // Deduplicate consecutive nodes with same title
+    console.log('All nodes loaded:', nodes.length, 'total nodes');
+    
+    if (nodes.length === 0) {
+      elements.recentNodes.innerHTML = '<div class="empty-state">Your recent learning will appear here.</div>';
+      return;
+    }
+    
+    // Get recent nodes and reverse for chronological order (newest first)
+    let recentNodes = nodes.slice(-30).reverse(); // Get more nodes for better deduplication
+    
+    // Improved deduplication: use URL or title+domain as key
+    const seenKeys = new Set();
     const dedupedNodes = [];
-    let previousTitle = null;
     
     for (const node of recentNodes) {
-      // Normalize title for comparison (remove extra spaces, lowercase)
-      const normalizedTitle = node.title.trim().toLowerCase();
+      // Validate node structure
+      if (!node || !node.title) {
+        console.warn('Invalid node structure:', node);
+        continue;
+      }
       
-      // Only add if title is different from previous node
-      if (normalizedTitle !== previousTitle) {
+      // Create a unique key based on URL (if available) or normalized title
+      let uniqueKey;
+      if (node.url) {
+        // Use URL as primary deduplication key
+        uniqueKey = node.url.toLowerCase();
+      } else {
+        // Fallback to normalized title + domain (if available)
+        const normalizedTitle = node.title.trim().toLowerCase().replace(/\s+/g, ' ');
+        uniqueKey = node.domain ? `${normalizedTitle}::${node.domain}` : normalizedTitle;
+      }
+      
+      // Only add if we haven't seen this key before
+      if (!seenKeys.has(uniqueKey)) {
+        seenKeys.add(uniqueKey);
         dedupedNodes.push(node);
-        previousTitle = normalizedTitle;
+        
+        // Stop once we have 10 unique nodes
+        if (dedupedNodes.length >= 10) {
+          break;
+        }
       }
     }
     
-    // Limit to 10 nodes after deduplication
-    const finalNodes = dedupedNodes.slice(0, 10);
-    
-    // Render nodes
-    const nodesHTML = finalNodes.map(node => `
-      <div class="knowledge-node">
-        <div class="node-title">${truncateText(node.title, 80)}</div>
-        <div class="node-meta">
-          <span>${new Date(node.timestamp).toLocaleDateString()}</span>
-          <span>${formatTime(node.timeSpent)}</span>
-          <span>${node.category}</span>
-        </div>
-        <div class="node-concepts">
-          ${node.concepts.map(c => 
-            `<span class="timeline-concept">${c}</span>`
-          ).join('')}
-        </div>
-        ${node.connections.length > 0 ? `
-          <div class="node-connections">
-            ${node.connections.slice(0, 3).map(conn => `
-              <div class="connection-item">
-                <span class="connection-strength ${conn.strength}">${conn.strength}</span>
-                <span>${conn.type.replace('_', ' ')}: ${conn.insight}</span>
-              </div>
-            `).join('')}
+    // Render nodes with proper validation
+    const nodesHTML = dedupedNodes.map(node => {
+      // Validate required fields with defaults
+      const title = node.title || 'Untitled';
+      const timestamp = node.timestamp || Date.now();
+      const timeSpent = node.timeSpent || 0;
+      const category = node.category || 'Unknown';
+      const concepts = Array.isArray(node.concepts) ? node.concepts : [];
+      const connections = Array.isArray(node.connections) ? node.connections : [];
+      
+      return `
+        <div class="knowledge-node">
+          <div class="node-title">${truncateText(title, 80)}</div>
+          <div class="node-meta">
+            <span>${new Date(timestamp).toLocaleDateString()}</span>
+            <span>${formatTime(timeSpent)}</span>
+            <span>${category}</span>
           </div>
-        ` : ''}
-      </div>
-    `).join('');
+          ${concepts.length > 0 ? `
+            <div class="node-concepts">
+              ${concepts.slice(0, 5).map(c => 
+                `<span class="timeline-concept">${c}</span>`
+              ).join('')}
+            </div>
+          ` : ''}
+          ${connections.length > 0 ? `
+            <div class="node-connections">
+              ${connections.slice(0, 3).map(conn => `
+                <div class="connection-item">
+                  <span class="connection-strength ${conn.strength || 'weak'}">${conn.strength || 'weak'}</span>
+                  <span>${(conn.type || 'related').replace('_', ' ')}: ${conn.insight || ''}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
     
-    elements.recentNodes.innerHTML = nodesHTML;
+    elements.recentNodes.innerHTML = nodesHTML || '<div class="empty-state">Your recent learning will appear here.</div>';
   } catch (error) {
     console.error('Error loading recent nodes:', error);
+    elements.recentNodes.innerHTML = '<div class="empty-state">Error loading recent learning data.</div>';
   }
 }
 

@@ -20,9 +20,20 @@ export class KnowledgeGraph {
     if (this.initialized) return true;
     
     try {
+      // Initialize AI service
       await this.aiService.initialize();
+      
+      // CRITICAL: Initialize the storage module
+      console.log('Initializing Knowledge Storage...');
+      const storageInitialized = await this.storage.initialize();
+      if (!storageInitialized) {
+        console.error('Failed to initialize Knowledge Storage');
+        return false;
+      }
+      console.log('✅ Knowledge Storage initialized successfully');
+      
       this.initialized = true;
-      console.log('Knowledge Graph initialized');
+      console.log('✅ Knowledge Graph fully initialized');
       return true;
     } catch (error) {
       console.error('Failed to initialize Knowledge Graph:', error);

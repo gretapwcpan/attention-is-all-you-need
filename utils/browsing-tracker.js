@@ -79,9 +79,9 @@ export class BrowsingTracker {
       // Update domain stats
       this.updateDomainStats(sessionData);
       
-      // TEMPORARILY REDUCED: Process for knowledge graph if session is long enough (5+ seconds for testing)
-      const KNOWLEDGE_THRESHOLD = 5000; // 5 seconds for testing (was 120000 for 2 minutes)
-      console.log(`Knowledge extraction check: duration=${sessionData.duration}ms, threshold=${KNOWLEDGE_THRESHOLD}ms, qualifies=${sessionData.duration >= KNOWLEDGE_THRESHOLD}`);
+      // TEMPORARILY REDUCED: Process for knowledge graph if session is long enough (1+ seconds for testing)
+      const KNOWLEDGE_THRESHOLD = 1000; // 1 second for testing (was 120000 for 2 minutes)
+      console.log(`📊 Knowledge extraction check: duration=${sessionData.duration}ms (${Math.round(sessionData.duration/1000)}s), threshold=${KNOWLEDGE_THRESHOLD}ms, qualifies=${sessionData.duration >= KNOWLEDGE_THRESHOLD}`);
       
       if (sessionData.duration >= KNOWLEDGE_THRESHOLD && this.knowledgeGraph && this.aiSummarizer) {
         try {
