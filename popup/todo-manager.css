@@ -255,10 +255,36 @@ body {
   transition: var(--transition);
   border-radius: 4px;
   margin-right: 12px;
+  display: none;
 }
 
 .goal-edit-input:focus {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Edit Mode Styles */
+.goal-item.editing .goal-title {
+  display: none;
+}
+
+.goal-item.editing .goal-edit-input {
+  display: block !important;
+}
+
+.goal-item.editing .edit-goal {
+  display: none;
+}
+
+.goal-item.editing .save-goal {
+  display: flex !important;
+}
+
+.goal-item.editing .cancel-goal {
+  display: flex !important;
+}
+
+.goal-item.editing .complete-goal {
+  display: none;
 }
 
 /* Goal Actions */
