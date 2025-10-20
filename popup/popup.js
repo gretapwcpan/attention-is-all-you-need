@@ -1,4 +1,4 @@
-// FocusFlow - Popup JavaScript
+// AttenGame - Popup JavaScript
 
 // DOM Elements
 const elements = {
@@ -50,7 +50,7 @@ let todayData = {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 FocusFlow initializing...');
+  console.log('🚀 AttenGame initializing...');
   await loadCurrentSession();
   await loadTodayData();
   await loadCharacter();
@@ -527,9 +527,9 @@ function updatePetWithFocusState() {
 // Note: AI summaries feature has been removed as the DOM elements no longer exist
 // This functionality has been replaced by the Tamagotchi pet system
 
-// Open FocusFlow Insights dialog window
+// Open AttenGame Insights dialog window
 async function askAICoach() {
-  // Open the FocusFlow Insights dialog in a new window
+  // Open the AttenGame Insights dialog in a new window
   chrome.windows.create({
     url: chrome.runtime.getURL('popup/coach-dialog.html'),
     type: 'popup',
@@ -1092,7 +1092,7 @@ function setupEventListeners() {
     });
   }
   
-  // FocusFlow Insights button
+  // AttenGame Insights button
   if (elements.askCoach) {
     elements.askCoach.addEventListener('click', () => {
       chrome.windows.create({

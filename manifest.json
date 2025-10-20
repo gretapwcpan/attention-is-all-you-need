@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "FocusFlow - Roam Less. Discover More.",
-  "short_name": "FocusFlow",
+  "name": "AttenGame - Roam Less. Discover More.",
+  "short_name": "AttenGame",
   "version": "3.1.0",
   "description": "Your digital companion that helps you browse with purpose. Track focus time, build better habits, and watch your productivity grow through mastery stages.",
   "icons": {
@@ -34,7 +34,7 @@
       "48": "icons/icon.png",
       "128": "icons/icon.png"
     },
-    "default_title": "FocusFlow - Check your progress"
+    "default_title": "AttenGame - Check your progress"
   },
   "content_scripts": [
     {

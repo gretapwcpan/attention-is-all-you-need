@@ -1,4 +1,4 @@
-// FocusFlow - Background Service Worker
+// AttenGame - Background Service Worker
 // Roam Less. Discover More.
 
 // Import AI and character modules

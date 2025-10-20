@@ -1,10 +1,10 @@
-# FocusFlow - Roam Less. Discover More.
+# AttenGame - Roam Less. Discover More.
 
-Transform your browsing into a productive journey with FocusFlow - your digital companion that helps you browse with purpose.
+Transform your browsing into a productive journey with AttenGame - your digital companion that helps you browse with purpose.
 
-##  What is FocusFlow?
+##  What is AttenGame?
 
-FocusFlow is a Chrome extension that gamifies your browsing experience to help you build better digital habits. Watch your attention monster grow through mastery stages as you maintain focus, complete daily goals, and browse with intention.
+AttenGame is a Chrome extension that gamifies your browsing experience to help you build better digital habits. Watch your attention monster grow through mastery stages as you maintain focus, complete daily goals, and browse with intention.
 
 ## ✨ Key Features
 
@@ -50,23 +50,23 @@ FocusFlow is a Chrome extension that gamifies your browsing experience to help y
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/focusflow.git
+   git clone https://github.com/yourusername/AttenGame.git
    ```
 
 2. **Load in Chrome:**
    - Open Chrome and go to `chrome://extensions/`
    - Enable "Developer mode" (top right)
    - Click "Load unpacked"
-   - Select the FocusFlow folder
+   - Select the AttenGame folder
 
 3. **Start browsing!**
-   - Click the FocusFlow icon in your toolbar
+   - Click the AttenGame icon in your toolbar
    - Watch your attention monster and start building better habits
 
 ##  How It Works
 
 ### Focus States
-FocusFlow tracks three types of focus:
+AttenGame tracks three types of focus:
 
 - **🔵 Deep Focus** (10+ minutes on a page) - Maximum productivity
 - **🟢 Active Focus** (5-10 minutes) - Engaged reading
@@ -161,6 +161,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Ready to transform your browsing habits?** Install FocusFlow today and start your journey toward more intentional, productive web browsing! 🚀
+**Ready to transform your browsing habits?** Install AttenGame today and start your journey toward more intentional, productive web browsing! 🚀
 
-*Remember: The internet is vast and full of knowledge. With FocusFlow, you'll navigate it with purpose and build something meaningful along the way.*
+*Remember: The internet is vast and full of knowledge. With AttenGame, you'll navigate it with purpose and build something meaningful along the way.*
