@@ -7,8 +7,6 @@ import { NetworkVisualizer } from '../utils/network-visualizer.js';
 const elements = {
   totalTime: document.getElementById('totalTime'),
   focusScore: document.getElementById('focusScore'),
-  sitesCount: document.getElementById('sitesCount'),
-  topicsCount: document.getElementById('topicsCount'),
   topSites: document.getElementById('topSites'),
   recentSessions: document.getElementById('recentSessions'),
   insights: document.getElementById('insights'),
@@ -108,30 +106,6 @@ function updateSummaryCards(data) {
   // Focus score
   const score = calculateFocusScore(data);
   elements.focusScore.textContent = score > 0 ? score : '--';
-  
-  // Sites count - handle both Set and Array types
-  let sitesCount = 0;
-  if (data.uniqueSites) {
-    if (data.uniqueSites instanceof Set) {
-      sitesCount = data.uniqueSites.size;
-    } else if (Array.isArray(data.uniqueSites)) {
-      // Remove duplicates if it's an array
-      sitesCount = new Set(data.uniqueSites).size;
-    }
-  }
-  elements.sitesCount.textContent = sitesCount.toString();
-  
-  // Topics count - handle both Set and Array types
-  let topicsCount = 0;
-  if (data.topics) {
-    if (data.topics instanceof Set) {
-      topicsCount = data.topics.size;
-    } else if (Array.isArray(data.topics)) {
-      // Remove duplicates if it's an array
-      topicsCount = new Set(data.topics).size;
-    }
-  }
-  elements.topicsCount.textContent = topicsCount.toString();
 }
 
 // Calculate focus score
@@ -280,28 +254,6 @@ function generateInsights(data) {
       type: 'warning',
       message: `You've been online for ${Math.round(hours)} hours today. Remember to take breaks!`
     });
-  }
-  
-  // Site diversity - handle both Set and Array types
-  if (data.uniqueSites) {
-    let siteCount = 0;
-    if (data.uniqueSites instanceof Set) {
-      siteCount = data.uniqueSites.size;
-    } else if (Array.isArray(data.uniqueSites)) {
-      siteCount = new Set(data.uniqueSites).size;
-    }
-    
-    if (siteCount > 30) {
-      insights.push({
-        type: 'info',
-        message: `High exploration: visited ${siteCount} different sites today.`
-      });
-    } else if (siteCount < 5 && siteCount > 0) {
-      insights.push({
-        type: 'positive',
-        message: `Focused browsing: stayed on just ${siteCount} sites today.`
-      });
-    }
   }
   
   return insights;
@@ -572,8 +524,6 @@ async function clearData() {
 function showEmptyState() {
   elements.totalTime.textContent = '0h 0m';
   elements.focusScore.textContent = '--';
-  elements.sitesCount.textContent = '0';
-  elements.topicsCount.textContent = '0';
   elements.topSites.innerHTML = '<div class="empty-state">No data yet. Start browsing to see analytics.</div>';
   elements.recentSessions.innerHTML = '<div class="empty-state">No sessions recorded yet.</div>';
   elements.insights.innerHTML = '<div class="empty-state">Insights will appear as you browse.</div>';
