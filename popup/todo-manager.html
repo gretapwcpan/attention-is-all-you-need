@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AttenGame - Daily Goals</title>
     <link rel="stylesheet" href="todo-manager.css">
+    <!-- Sortable.js for drag and drop (local copy for offline use) -->
+    <script src="../libs/sortable.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -46,6 +48,15 @@
             </div>
         </div>
 
+        <!-- Category Filter -->
+        <div class="category-filter-section">
+            <label for="categoryFilter">Filter by Category:</label>
+            <select id="categoryFilter">
+                <option value="all">All Categories</option>
+                <!-- Categories will be dynamically added here -->
+            </select>
+        </div>
+
         <!-- Goals List -->
         <div class="goals-list" id="goalsList">
             <!-- Goals will be dynamically added here -->
@@ -77,7 +88,9 @@
     <!-- Goal Template -->
     <template id="goalTemplate">
         <div class="goal-item" data-goal-id="">
+            <span class="drag-handle">⋮⋮</span>
             <span class="goal-title"></span>
+            <span class="category-badge"></span>
             <input type="text" class="goal-edit-input" style="display: none;">
             <div class="goal-actions">
                 <button class="edit-goal">
@@ -133,6 +146,6 @@
         </defs>
     </svg>
 
-    <script src="todo-manager.js"></script>
+    <script type="module" src="todo-manager.js"></script>
 </body>
 </html>

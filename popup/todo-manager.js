@@ -1,15 +1,57 @@
-// Todo Manager JavaScript - Simplified Goals Only Version
+// Todo Manager JavaScript - Enhanced with Drag & Drop and AI Categorization
+import { getTodoCategorizer } from '../utils/todo-categorizer.js';
+
 class TodoManager {
     constructor() {
         this.goals = [];
+        this.sortable = null;
+        this.categorizer = null;
+        this.currentFilter = 'all';
         this.init();
     }
 
-    init() {
+    async init() {
+        // Initialize categorizer
+        this.categorizer = getTodoCategorizer();
+        await this.categorizer.prewarm(); // Pre-warm AI model
+        
         this.loadData();
         this.setupEventListeners();
         this.render();
         this.updateProgress();
+        this.initializeSortable();
+    }
+
+    initializeSortable() {
+        const goalsList = document.getElementById('goalsList');
+        if (goalsList && typeof Sortable !== 'undefined') {
+            this.sortable = Sortable.create(goalsList, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                handle: '.drag-handle',
+                onEnd: (evt) => {
+                    this.handleDragEnd(evt);
+                }
+            });
+        }
+    }
+
+    handleDragEnd(evt) {
+        const { oldIndex, newIndex } = evt;
+        if (oldIndex === newIndex) return;
+
+        // Reorder the goals array
+        const movedGoal = this.goals.splice(oldIndex, 1)[0];
+        this.goals.splice(newIndex, 0, movedGoal);
+
+        // Update positions
+        this.goals.forEach((goal, index) => {
+            goal.position = index;
+        });
+
+        this.saveData();
+        this.showMotivationalMessage('✨ Priorities updated!');
     }
 
     setupEventListeners() {
@@ -34,6 +76,16 @@ class TodoManager {
             });
         }
 
+        // Category filter
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', (e) => {
+                this.currentFilter = e.target.value;
+                this.render();
+                this.updateFilterCount();
+            });
+        }
+
         // Footer buttons
         const analyticsBtn = document.getElementById('viewAnalyticsBtn');
         if (analyticsBtn) {
@@ -55,12 +107,20 @@ class TodoManager {
         if (savedData) {
             const data = JSON.parse(savedData);
             this.goals = data.goals || [];
-            // Ensure all goals have a completed property
-            this.goals.forEach(goal => {
+            // Ensure all goals have required properties
+            this.goals.forEach((goal, index) => {
                 if (goal.completed === undefined) {
                     goal.completed = false;
                 }
+                if (goal.position === undefined) {
+                    goal.position = index;
+                }
+                if (!goal.category) {
+                    goal.category = 'personal';
+                }
             });
+            // Sort by position
+            this.goals.sort((a, b) => a.position - b.position);
         } else {
             this.goals = [];
         }
@@ -83,26 +143,51 @@ class TodoManager {
         return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    addGoal() {
+    async addGoal() {
         const input = document.getElementById('goalInput');
         if (!input) return;
         
         const title = input.value.trim();
         if (!title) return;
 
+        // Get AI categorization
+        let category = 'General';
+        
+        if (this.categorizer) {
+            try {
+                const result = await this.categorizer.categorizeTodo(title);
+                category = result.category;
+            } catch (error) {
+                console.log('Categorization failed, using default:', error);
+            }
+        }
+
         const newGoal = {
             id: this.generateId(),
             title: title,
+            category: category,
+            position: 0, // New items go to top
             completed: false,
             createdAt: new Date().toISOString()
         };
 
-        this.goals.push(newGoal);
+        // Add to beginning and update positions
+        this.goals.unshift(newGoal);
+        this.goals.forEach((goal, index) => {
+            goal.position = index;
+        });
+
         this.saveData();
         this.render();
         this.updateProgress();
         
         input.value = '';
+        
+        // Show category notification
+        const categoryName = this.categorizer ? 
+            this.categorizer.getCategoryDisplayName(category) : 
+            category;
+        this.showMotivationalMessage(`📝 Added to ${categoryName}`);
     }
 
     async toggleGoal(goalId) {
@@ -113,7 +198,7 @@ class TodoManager {
         if (goal.completed) {
             goal.completedAt = new Date().toISOString();
             
-            // Award 1 XP for completing a mission (to match popup.js)
+            // Award 1 XP for completing a mission
             await this.awardXP(1);
             
             // Notify Tamagotchi pet about mission completion
@@ -121,7 +206,8 @@ class TodoManager {
                 chrome.runtime.sendMessage({
                     action: 'missionCompleted',
                     missionData: {
-                        goalTitle: goal.title
+                        goalTitle: goal.title,
+                        category: goal.category
                     }
                 }).catch(() => {
                     // Ignore errors if background script isn't ready
@@ -179,9 +265,32 @@ class TodoManager {
     deleteGoal(goalId) {
         if (confirm('Are you sure you want to delete this mission?')) {
             this.goals = this.goals.filter(g => g.id !== goalId);
+            // Update positions
+            this.goals.forEach((goal, index) => {
+                goal.position = index;
+            });
             this.saveData();
             this.render();
             this.updateProgress();
+        }
+    }
+
+    async changeCategory(goalId) {
+        const goal = this.goals.find(g => g.id === goalId);
+        if (!goal) return;
+
+        // Prompt user for new category
+        const newCategory = prompt('Enter a new category:', goal.category);
+        if (newCategory && newCategory.trim()) {
+            // Format the category
+            const formatted = newCategory.trim().charAt(0).toUpperCase() + 
+                            newCategory.trim().slice(1).toLowerCase();
+            goal.category = formatted;
+            
+            this.saveData();
+            this.render();
+            
+            this.showMotivationalMessage(`📂 Changed to ${formatted}`);
         }
     }
 
@@ -210,6 +319,43 @@ class TodoManager {
         
         // Update streak
         this.updateStreak();
+    }
+
+    updateFilterCount() {
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (!categoryFilter) return;
+
+        // Get unique categories from goals
+        const categories = [...new Set(this.goals.map(g => g.category))].sort();
+        
+        // Store current selection
+        const currentSelection = categoryFilter.value;
+        
+        // Clear and rebuild options
+        categoryFilter.innerHTML = '';
+        
+        // Add "All" option
+        const allOption = document.createElement('option');
+        allOption.value = 'all';
+        allOption.textContent = `All Categories (${this.goals.length})`;
+        categoryFilter.appendChild(allOption);
+        
+        // Add each unique category
+        categories.forEach(category => {
+            const count = this.goals.filter(g => g.category === category).length;
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = `${category} (${count})`;
+            categoryFilter.appendChild(option);
+        });
+        
+        // Restore selection if it still exists
+        if (currentSelection && Array.from(categoryFilter.options).some(opt => opt.value === currentSelection)) {
+            categoryFilter.value = currentSelection;
+        } else {
+            categoryFilter.value = 'all';
+            this.currentFilter = 'all';
+        }
     }
 
     updateStreak() {
@@ -242,22 +388,14 @@ class TodoManager {
         
         if (confirm(`Clear ${completedCount} completed mission${completedCount > 1 ? 's' : ''}?`)) {
             this.goals = this.goals.filter(g => !g.completed);
+            // Update positions
+            this.goals.forEach((goal, index) => {
+                goal.position = index;
+            });
             this.saveData();
             this.render();
             this.updateProgress();
         }
-    }
-
-    getCompletionMessage(goal) {
-        const messages = [
-            `✅ Mission "${goal.title}" complete!`,
-            `🎉 Objective achieved: "${goal.title}"!`,
-            `💪 Well done! "${goal.title}" is done!`,
-            `🚀 Success! "${goal.title}" accomplished!`,
-            `⭐ Excellent! "${goal.title}" completed!`
-        ];
-        
-        return messages[Math.floor(Math.random() * messages.length)];
     }
 
     showMotivationalMessage(message) {
@@ -269,27 +407,45 @@ class TodoManager {
         
         setTimeout(() => {
             messageElement.classList.remove('show');
-        }, 5000);
+        }, 3000);
+    }
+
+    getFilteredGoals() {
+        if (this.currentFilter === 'all') {
+            return this.goals;
+        }
+        return this.goals.filter(g => g.category.toLowerCase() === this.currentFilter.toLowerCase());
     }
 
     render() {
         const goalsList = document.getElementById('goalsList');
         if (!goalsList) return;
         
-        if (this.goals.length === 0) {
+        const filteredGoals = this.getFilteredGoals();
+        
+        if (filteredGoals.length === 0) {
             goalsList.innerHTML = `
                 <div class="empty-state">
                     <h3>No missions yet</h3>
-                    <p>Deploy your first mission objective above!</p>
+                    <p>${this.currentFilter !== 'all' ? 'No missions in this category' : 'Deploy your first mission objective above!'}</p>
                 </div>
             `;
             return;
         }
 
         goalsList.innerHTML = '';
-        this.goals.forEach(goal => {
+        filteredGoals.forEach(goal => {
             this.renderGoal(goal);
         });
+        
+        // Re-initialize sortable after render
+        if (this.sortable) {
+            this.sortable.destroy();
+        }
+        this.initializeSortable();
+        
+        // Update filter counts
+        this.updateFilterCount();
     }
 
     renderGoal(goal) {
@@ -306,9 +462,37 @@ class TodoManager {
             }
         }
         
+        // Add drag handle
+        const dragHandle = goalElement.querySelector('.drag-handle');
+        if (dragHandle && goal.completed) {
+            dragHandle.style.visibility = 'hidden';
+        }
+        
+        // Set title
         const titleEl = goalElement.querySelector('.goal-title');
         if (titleEl) {
             titleEl.textContent = goal.title;
+        }
+        
+        // Add category badge
+        const categoryBadge = goalElement.querySelector('.category-badge');
+        if (categoryBadge) {
+            const displayName = this.categorizer ? 
+                this.categorizer.getCategoryDisplayName(goal.category) : 
+                goal.category;
+            categoryBadge.textContent = displayName;
+            
+            // Apply dynamic color if categorizer is available
+            if (this.categorizer) {
+                const color = this.categorizer.getCategoryColor(goal.category);
+                categoryBadge.style.backgroundColor = color;
+                categoryBadge.style.color = '#ffffff';
+                categoryBadge.style.borderColor = color;
+            }
+            
+            categoryBadge.addEventListener('click', () => {
+                this.changeCategory(goal.id);
+            });
         }
         
         // Edit input field
@@ -396,10 +580,9 @@ class TodoManager {
                 editInput.select();
             }
         }
-        
     }
     
-    saveGoalEdit(goalId) {
+    async saveGoalEdit(goalId) {
         const goalItem = document.querySelector(`[data-goal-id="${goalId}"]`);
         if (!goalItem) return;
         
@@ -421,6 +604,16 @@ class TodoManager {
             goal.title = newTitle;
             goal.lastEdited = new Date().toISOString();
             
+            // Re-categorize with new title
+            if (this.categorizer) {
+                try {
+                    const result = await this.categorizer.categorizeTodo(newTitle);
+                    goal.category = result.category;
+                } catch (error) {
+                    console.log('Re-categorization failed:', error);
+                }
+            }
+            
             // Save and re-render
             this.saveData();
             this.render();
@@ -441,7 +634,6 @@ class TodoManager {
                 }
             }
         }
-        
     }
     
     triggerCoinCelebration() {
